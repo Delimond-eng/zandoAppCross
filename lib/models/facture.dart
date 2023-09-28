@@ -66,7 +66,7 @@ class Facture {
     factureDevise = data["facture_devise"];
     factureClientId = data["facture_client_id"];
     factureStatut = data["facture_statut"];
-    factureTimestamp = data["facture_create_At"];
+    factureTimestamp = data["facture_create_At"].toString();
     factureState = data["facture_state"];
     if (data["client_id"] != null) {
       client = Client.fromMap(data);

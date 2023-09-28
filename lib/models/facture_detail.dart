@@ -72,7 +72,7 @@ class FactureDetail {
     factureDetailQte = data["facture_detail_qte"];
     factureDetailPu = data["facture_detail_pu"].toString();
     factureDetailDevise = data["facture_detail_devise"];
-    factureDetailTimestamp = data["facture_detail_create_At"];
+    factureDetailTimestamp = data["facture_detail_create_At"].toString();
     factureDetailState = data["facture_detail_state"];
     factureId = data["facture_id"];
   }

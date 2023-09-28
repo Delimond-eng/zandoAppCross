@@ -48,7 +48,7 @@ class Compte {
     compteLibelle = data["compte_libelle"];
     compteDevise = data["compte_devise"];
     compteStatus = data["compte_status"];
-    compteTimestamp = data["compte_create_At"];
+    compteTimestamp = data["compte_create_At"].toString();
     compteState = data["compte_state"];
     compteDate = data["compte_create_At"].toString();
   }

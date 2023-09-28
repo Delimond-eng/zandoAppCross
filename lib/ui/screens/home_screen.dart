@@ -2,8 +2,14 @@ import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
-import 'package:lottie/lottie.dart';
-import '../../services/synchonisation.dart';
+import 'package:zandoprintapp/models/facture_detail.dart';
+import 'package:zandoprintapp/models/operation.dart';
+import 'package:zandoprintapp/services/db.service.dart';
+import '../../models/client.dart';
+import '../../models/compte.dart';
+import '../../models/facture.dart';
+import '../../models/user.dart';
+import '../../services/utils.dart';
 import '/global/controllers.dart';
 import '/global/storage.dart';
 import '/ui/widgets/user_avatar.dart';
@@ -42,6 +48,26 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  Future<bool> updateDatabase() async {
+    /*Old database*/
+    var olddb = await DBService.initDb(dbname: "old.db");
+
+    /*New database*/
+    var db = await DBService.initDb();
+
+    /*old query*/
+    var query = await olddb.rawQuery("SELECT * FROM users");
+    for (var e in query) {
+      var user = User.fromMap(e);
+      /* var date =
+          parseTimestampToDate(int.parse(compte.compteTimestamp.toString()));
+      compte.compteTimestamp = dateToString(date); */
+      var latestId = await db.insert("users", user.toMap());
+      print(latestId);
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -52,9 +78,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   backgroundColor: primaryColor,
                   onPressed: () async {
                     authController.isSyncIn.value = true;
-                    await Future.delayed(const Duration(seconds: 4), () {
-                      authController.isSyncIn.value = false;
-                    });
+                    updateDatabase()
+                        .then((value) => authController.isSyncIn.value = false);
                   },
                   child: authController.isSyncIn.value
                       ? const SizedBox(

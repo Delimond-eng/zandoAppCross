@@ -7,14 +7,15 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart' as ffi;
 import 'package:path/path.dart';
 
 class DBService {
-  static Future<Database> initDb() async {
+  static Future<Database> initDb({String? dbname}) async {
     if (Platform.isWindows) {
       ffi.sqfliteFfiInit();
       var databaseFactory = ffi.databaseFactoryFfi;
       final Directory appDocumentsDir =
           await getApplicationDocumentsDirectory();
       //Create path for database
-      String dbPath = join(appDocumentsDir.path, "databases", "zandodb.db");
+      String dbPath =
+          join(appDocumentsDir.path, "databases", dbname ?? "zandodb.db");
       var db = await databaseFactory.openDatabase(
         dbPath,
         options: OpenDatabaseOptions(

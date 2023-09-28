@@ -89,7 +89,7 @@ class Operations {
     operationId = data["operation_id"];
     operationLibelle = data["operation_libelle"];
     operationDevise = data["operation_devise"];
-    operationTimestamp = data["operation_create_At"];
+    operationTimestamp = data["operation_create_At"].toString();
     operationType = data["operation_type"];
     operationCompteId = data["operation_compte_id"];
     operationFactureId = data["operation_facture_id"];
