@@ -1,0 +1,11 @@
+{
+    "nuxt.isNuxtApp": false,
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "database": "C:\\Users\\Gaston Delimond\\OneDrive\\Documents\\databases\\zandodb.db",
+            "name": "zando database"
+        }
+    ]
+}

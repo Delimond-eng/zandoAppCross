@@ -1,0 +1,23 @@
+{
+    "_id": "86c8a912-7d51-435c-87b4-ad351e17aebf",
+    "colName": "SyncData",
+    "created": "2023-08-01T11:03:40.421Z",
+    "sortNum": 10000,
+    "folders": [],
+    "requests": [
+        {
+            "_id": "0edc9d32-14b1-4738-8741-25e805fdf1e5",
+            "colId": "86c8a912-7d51-435c-87b4-ad351e17aebf",
+            "containerId": "",
+            "name": "Get Data",
+            "url": "http://z-database.rtgroup-rdc.com/datas/sync/out",
+            "method": "GET",
+            "sortNum": 10000,
+            "created": "2023-08-01T11:03:50.353Z",
+            "modified": "2023-08-01T11:08:52.154Z",
+            "headers": [],
+            "params": [],
+            "tests": []
+        }
+    ]
+}
