@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
+import '../global/controllers.dart';
 import '/services/db.service.dart';
 
 import '../models/sync_model.dart';
@@ -11,7 +12,7 @@ import '../models/sync_model.dart';
 class Sync {
   static const String baseURL = "http://127.0.0.1/zando_sync";
   static Future<bool> inPutData() async {
-    /* authController.isSyncIn.value = true; */
+    authController.isSyncIn.value = true;
     var db = await DBService.initDb();
     try {
       var users = await db.query("users");
@@ -62,8 +63,10 @@ class Sync {
       if (kDebugMode) {
         print('error : $e');
       }
+      authController.isSyncIn.value = false;
       return false;
     }
+    authController.isSyncIn.value = false;
     return true;
   }
 
@@ -76,6 +79,9 @@ class Sync {
       if (kDebugMode) {
         print("Error: $err");
       }
+      authController.isSyncIn.value = false;
+      // ignore: null_check_always_fails
+      return null!;
     }
     if (response != null) {
       if (response.statusCode == 200) {
@@ -130,5 +136,38 @@ class Sync {
         print('error : $err');
       }
     }
+  }
+
+  static Future<bool> synData(String table, id, Map<String, dynamic> json,
+      {List<dynamic>? datas}) async {
+    var db = await DBService.initDb();
+    String tableIndex = table.substring(0, table.length - 1);
+    try {
+      if (datas!.isNotEmpty) {
+        for (var user in datas) {
+          var check = await db.rawQuery(
+            "SELECT * FROM $table WHERE $tableIndex = ?",
+            [id],
+          );
+          if (check.isEmpty) {
+            await db.insert(table, json);
+          } else {
+            await db.update(
+              table,
+              user.toMap(),
+              where: "$tableIndex=?",
+              whereArgs: [id],
+            );
+          }
+        }
+        return true;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print("Error: $e");
+      }
+      return false;
+    }
+    return false;
   }
 }
