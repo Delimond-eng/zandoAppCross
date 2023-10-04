@@ -147,13 +147,14 @@ Future<void> showLoginModal(context, {VoidCallback? onLoggedIn}) async {
 
 Future<void> createDefaultUser() async {
   final db = await DBService.initDb();
-  var users = await db.query("users");
+  var users =
+      await db.query("users", where: "user_name=?", whereArgs: ['admin']);
   if (kDebugMode) {
     print(users);
   }
   if (users.isEmpty) {
     var usr = User(
-      userName: "Gaston",
+      userName: "admin",
       userPass: "12345",
       userRole: "admin",
     );
