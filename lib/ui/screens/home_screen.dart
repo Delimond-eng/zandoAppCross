@@ -51,19 +51,82 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<bool> updateDatabase() async {
     /*Old database*/
     var olddb = await DBService.initDb(dbname: "old.db");
-
     /*New database*/
     var db = await DBService.initDb();
 
-    /*old query*/
     var query = await olddb.rawQuery("SELECT * FROM users");
     for (var e in query) {
       var user = User.fromMap(e);
-      /* var date =
+      var latestId = await db.rawInsert(
+          "INSERT OR REPLACE INTO users(user_id,user_name, user_role, user_pass, user_access)",
+          [
+            user.userId,
+            user.userName,
+            user.userRole,
+            user.userPass,
+            user.userAccess
+          ]);
+      print("user : $latestId");
+    }
+
+    /*client*/
+    var query1 = await olddb
+        .rawQuery("SELECT * FROM clients WHERE NOT client_state = 'deleted'");
+    for (var e in query1) {
+      var client = Client.fromMap(e);
+      var date =
+          parseTimestampToDate(int.parse(client.clientTimestamp.toString()));
+      client.clientTimestamp = dateToString(date);
+      var latestId = await db.insert("clients", client.toMap());
+      print("client : $latestId");
+    }
+
+    /*factures*/
+    var query2 = await olddb
+        .rawQuery("SELECT * FROM factures WHERE NOT facture_state='deleted'");
+    for (var e in query2) {
+      var facture = Facture.fromMap(e);
+      var date =
+          parseTimestampToDate(int.parse(facture.factureTimestamp.toString()));
+      facture.factureTimestamp = dateToString(date);
+      var latestId = await db.insert("factures", facture.toMap());
+      print("facture : $latestId");
+    }
+
+    /*Facture details*/
+    var query3 = await olddb.rawQuery(
+        "SELECT * FROM facture_details WHERE NOT facture_detail_state='deleted'");
+    for (var e in query3) {
+      var detail = FactureDetail.fromMap(e);
+      var date = parseTimestampToDate(
+          int.parse(detail.factureDetailTimestamp.toString()));
+      detail.factureDetailTimestamp = dateToString(date);
+      var latestId = await db.insert("facture_details", detail.toMap());
+      print("detail : $latestId");
+    }
+
+    /*compte*/
+    var query4 = await olddb
+        .rawQuery("SELECT * FROM comptes WHERE NOT compte_state='deleted'");
+    for (var e in query4) {
+      var compte = Compte.fromMap(e);
+      var date =
           parseTimestampToDate(int.parse(compte.compteTimestamp.toString()));
-      compte.compteTimestamp = dateToString(date); */
-      var latestId = await db.insert("users", user.toMap());
-      print(latestId);
+      compte.compteTimestamp = dateToString(date);
+      var latestId = await db.insert("comptes", compte.toMap());
+      print("compte : $latestId");
+    }
+
+    /*operations*/
+    var query5 = await olddb.rawQuery(
+        "SELECT * FROM operations WHERE NOT operation_state='deleted'");
+    for (var e in query5) {
+      var operation = Operations.fromMap(e);
+      var date = parseTimestampToDate(
+          int.parse(operation.operationTimestamp.toString()));
+      operation.operationTimestamp = dateToString(date);
+      var latestId = await db.insert("operations", operation.toMap());
+      print("operation : $latestId");
     }
     return true;
   }
