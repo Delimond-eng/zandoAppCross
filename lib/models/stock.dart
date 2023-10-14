@@ -6,17 +6,15 @@ class Entree {
   double? entreePrixAchat;
   String? entreePrixDevise;
   String? entreeCreateAt;
-  String? entreeRef;
   String? entreeState;
   int? entreeProduitId;
-  Produit? produit;
+  double? totalEntrees;
   Entree({
     this.entreeId,
     this.entreeQte,
     this.entreePrixAchat,
     this.entreePrixDevise,
     this.entreeCreateAt,
-    this.entreeRef,
     this.entreeState,
     this.entreeProduitId,
   });
@@ -27,13 +25,13 @@ class Entree {
       data['entree_id'] = entreeId;
     }
     data['entree_qte'] = entreeQte;
-    data['entree_ref'] = entreeRef;
     data['entree_prix_achat'] = entreePrixAchat;
     data['entree_prix_devise'] = entreePrixDevise;
     var dateNow = DateTime.now();
     data['entree_create_At'] = entreeCreateAt ?? dateToString(dateNow);
     data['entree_produit_id'] = entreeProduitId;
     data['entree_state'] = entreeState ?? 'allowed';
+
     return data;
   }
 
@@ -44,16 +42,9 @@ class Entree {
     entreePrixDevise = data['entree_prix_devise'];
     entreeCreateAt = data['entree_create_At'];
     entreeProduitId = data['entree_produit_id'];
-    entreeRef = data['entree_ref'];
-    entreeState = data['entree_state'];
-    if (data['produit_id'] != null) {
-      produit = Produit.fromMap(data);
+    if (data['total_entrees'] != null) {
+      totalEntrees = data['total_entrees'];
     }
-  }
-
-  @override
-  String toString() {
-    return entreeRef!;
   }
 }
 
@@ -62,16 +53,15 @@ class Sortie {
   double? sortieQte;
   String? sortieMotif;
   String? sortieCreateAt;
-  int? sortieEntreeId;
   double? totalSorties;
   String? sortieState;
-  Entree? entree;
+  int? sortieProduitId;
 
   Sortie({
     this.sortieId,
     this.sortieQte,
     this.sortieMotif,
-    this.sortieEntreeId,
+    this.sortieProduitId,
     this.sortieCreateAt,
     this.sortieState,
   });
@@ -83,7 +73,7 @@ class Sortie {
     }
     data['sortie_qte'] = sortieQte;
     data['sortie_motif'] = sortieMotif!.isEmpty ? "sortie stock" : sortieMotif;
-    data['sortie_entree_id'] = sortieEntreeId;
+    data['sortie_produit_id'] = sortieProduitId;
     var dateNow = DateTime.now();
     data['sortie_create_At'] = sortieCreateAt ?? dateToString(dateNow);
     data['sortie_state'] = sortieState ?? 'allowed';
@@ -95,19 +85,11 @@ class Sortie {
     sortieQte = data['sortie_qte'];
     sortieMotif = data['sortie_motif'];
     sortieCreateAt = data['sortie_create_At'];
-    sortieEntreeId = data['sortie_entree_id'];
-    sortieEntreeId = data['sortie_entree_id'];
+    sortieProduitId = data['sortie_produit_id'];
     sortieState = data['sortie_state'];
-    if (data['total_sortie'] != null) {
-      totalSorties = data['total_sortie'];
+    if (data['total_sorties'] != null) {
+      totalSorties = data['total_sorties'];
     }
-    if (data['entree_id'] != null) {
-      entree = Entree.fromMap(data);
-    }
-  }
-
-  double get solde {
-    return (entree!.entreeQte! - totalSorties!);
   }
 }
 
@@ -116,6 +98,8 @@ class Produit {
   String? produitLibelle;
   String? produitCreateAt;
   String? produitState;
+  Entree? entree;
+  Sortie? sortie;
   Produit({
     this.produitId,
     this.produitLibelle,
@@ -140,6 +124,17 @@ class Produit {
     produitLibelle = data['produit_libelle'];
     produitCreateAt = data['produit_create_At'];
     produitState = data['produit_state'];
+    if (data['entree_id'] != null) {
+      entree = Entree.fromMap(data);
+    }
+
+    if (data['sortie_id'] != null) {
+      sortie = Sortie.fromMap(data);
+    }
+  }
+
+  double get solde {
+    return (entree!.totalEntrees! - sortie!.totalSorties!);
   }
 
   @override

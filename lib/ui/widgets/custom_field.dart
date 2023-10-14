@@ -206,11 +206,16 @@ class _CustomFieldState extends State<CustomField> {
                       fontSize: 12.0,
                     ),
                     value: selectDrop,
+                    hint: Text(
+                      widget.hintText,
+                      style: const TextStyle(
+                        fontSize: 12.0,
+                      ),
+                    ),
                     decoration: InputDecoration(
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
-                      hintText: widget.hintText,
                       hintStyle: TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 12.0,

@@ -1,3 +1,5 @@
+// ignore_for_file: null_check_always_fails
+
 import 'dart:math';
 
 import 'package:connectivity_plus/connectivity_plus.dart';

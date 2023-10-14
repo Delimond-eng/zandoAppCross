@@ -1,10 +1,11 @@
+// ignore_for_file: empty_catches
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import '../../../models/compte.dart';
 import '/services/db.service.dart';
-import '../../../models/client.dart';
 import '../../widgets/empty_state.dart';
 import '/config/utils.dart';
 import '/ui/widgets/search_input.dart';

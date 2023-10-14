@@ -152,13 +152,15 @@ Future<void> createDefaultUser() async {
   if (kDebugMode) {
     print(users);
   }
-  var usr = User(
-    userName: "Gaston",
-    userPass: "12345",
-    userRole: "admin",
-  );
-  var lastUserId = await db.insert("users", usr.toMap());
-  if (kDebugMode) {
-    print(lastUserId);
+  if (users.isEmpty) {
+    var usr = User(
+      userName: "admin",
+      userPass: "12345",
+      userRole: "admin",
+    );
+    var lastUserId = await db.insert("users", usr.toMap());
+    if (kDebugMode) {
+      print(lastUserId);
+    }
   }
 }

@@ -1,4 +1,5 @@
-import 'package:animate_do/animate_do.dart';
+// ignore_for_file: unnecessary_null_comparison
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
@@ -92,14 +93,14 @@ class _StockHomePageState extends State<StockHomePage> {
 
   Widget _globalView() {
     return Obx(
-      () => dataController.stockSorties.isEmpty
+      () => dataController.stocks.isEmpty
           ? const EmptyState()
           : ListView.builder(
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.all(10.0),
-              itemCount: dataController.stockSorties.length,
+              itemCount: dataController.stocks.length,
               itemBuilder: (BuildContext context, int index) {
-                var data = dataController.stockSorties[index];
+                var data = dataController.stocks[index];
                 return StockHomeCard(data: data);
               },
             ),
@@ -108,7 +109,7 @@ class _StockHomePageState extends State<StockHomePage> {
 }
 
 class StockHomeCard extends StatelessWidget {
-  final Sortie data;
+  final Produit data;
   const StockHomeCard({
     super.key,
     required this.data,
@@ -139,7 +140,7 @@ class StockHomeCard extends StatelessWidget {
                             color: Colors.grey,
                           ),
                           Text(
-                            data.entree!.entreeCreateAt!.split('-').first,
+                            data.produitCreateAt!.split('-').first,
                             style: const TextStyle(
                               fontSize: 15.0,
                               fontFamily: defaultFont,
@@ -152,7 +153,7 @@ class StockHomeCard extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.fromLTRB(5, 0, 0, 0),
                         child: Text(
-                          "${data.entree!.entreeCreateAt!.split('-')[1]}/${data.entree!.entreeCreateAt!.split('-').last}",
+                          "${data.produitCreateAt!.split('-')[1]}/${data.produitCreateAt!.split('-').last}",
                           style: const TextStyle(
                             fontSize: 10.0,
                             fontFamily: defaultFont,
@@ -182,65 +183,7 @@ class StockHomeCard extends StatelessWidget {
                           height: 3.0,
                         ),
                         Text(
-                          data.entree!.produit!.produitLibelle!,
-                          style: const TextStyle(
-                            fontSize: 12.0,
-                            fontFamily: defaultFont,
-                            fontWeight: FontWeight.w500,
-                            color: defaultTextColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Flexible(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          "Ref. Entrée",
-                          style: TextStyle(
-                            fontSize: 11.0,
-                            fontFamily: defaultFont,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.grey.shade800,
-                          ),
-                        ),
-                        const SizedBox(
-                          height: 3.0,
-                        ),
-                        Text(
-                          data.entree!.entreeRef!,
-                          style: const TextStyle(
-                            fontSize: 12.0,
-                            fontFamily: defaultFont,
-                            fontWeight: FontWeight.w500,
-                            color: defaultTextColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Flexible(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          "Prix achat",
-                          style: TextStyle(
-                            fontSize: 11.0,
-                            fontFamily: defaultFont,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.grey.shade800,
-                          ),
-                        ),
-                        const SizedBox(
-                          height: 3.0,
-                        ),
-                        Text(
-                          "${data.entree!.entreePrixAchat!} ${data.entree!.entreePrixDevise}",
+                          data.produitLibelle!,
                           style: const TextStyle(
                             fontSize: 12.0,
                             fontFamily: defaultFont,
@@ -269,7 +212,7 @@ class StockHomeCard extends StatelessWidget {
                           height: 3.0,
                         ),
                         Text(
-                          data.entree!.entreeQte.toString(),
+                          data.entree!.totalEntrees.toString(),
                           style: const TextStyle(
                             fontSize: 12.0,
                             fontFamily: defaultFont,
@@ -298,7 +241,7 @@ class StockHomeCard extends StatelessWidget {
                           height: 3.0,
                         ),
                         Text(
-                          data.totalSorties!.toString(),
+                          data.sortie!.totalSorties.toString(),
                           style: const TextStyle(
                             fontSize: 12.0,
                             fontFamily: defaultFont,
@@ -359,8 +302,7 @@ class StockHomeCard extends StatelessWidget {
                                 id: data.entree!.entreeId!,
                               )
                                   .then((value) {
-                                showSortiesDetailsModal(context,
-                                    selectedEntree: data.entree!);
+                                showSortiesDetailsModal(context, produit: data);
                               });
                               // ignore: use_build_context_synchronously
                             },
@@ -393,18 +335,22 @@ class StockHomeCard extends StatelessWidget {
                             onTap: () async {
                               DGCustomDialog.showInteraction(context,
                                   message:
-                                      "Etes-vous sûr de vouloir supprimer cette sortie stock ?",
+                                      "Etes-vous sûr de vouloir supprimer définitivement ce stock ?",
                                   onValidated: () async {
                                 var db = await DBService.initDb();
                                 var id = await db.update(
-                                    "entrees", {"entree_state": "deleted"},
-                                    where: "entree_id = ?",
-                                    whereArgs: [data.entree!.entreeId]);
+                                    "produits", {"produit_state": "deleted"},
+                                    where: "produit_id = ?",
+                                    whereArgs: [data.produitId]);
                                 if (id != null) {
                                   await db.update(
                                       "sorties", {"sortie_state": "deleted"},
-                                      where: "sortie_entree_id = ?",
-                                      whereArgs: [data.entree!.entreeId]);
+                                      where: "sortie_produit_id = ?",
+                                      whereArgs: [data.produitId]);
+                                  await db.update(
+                                      "entrees", {"entree_state": "deleted"},
+                                      where: "entree_produit_id = ?",
+                                      whereArgs: [data.produitId]);
                                   dataController.loadStockData(1);
                                   EasyLoading.showSuccess(
                                       "Suppression effectuée !");

@@ -4,9 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:get/get.dart';
-import 'package:zandoprintapp/global/controllers.dart';
-import 'package:zandoprintapp/services/db.service.dart';
-import 'package:zandoprintapp/services/utils.dart';
+import '/global/controllers.dart';
+import '/services/db.service.dart';
 import '../../../models/stock.dart';
 import '/ui/widgets/custom_field.dart';
 
@@ -196,7 +195,6 @@ Future<void> showCreateStockModal(context) async {
                           entreeCreateAt: date,
                           entreeProduitId:
                               latestProduitId ?? produit!.produitId,
-                          entreeRef: getRandomString(produit!.produitLibelle!),
                         );
                         var beContinued2 =
                             await DBService.checkAvailability("entrees");

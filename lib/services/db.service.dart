@@ -50,9 +50,9 @@ class DBService {
       await db.execute(
           "CREATE TABLE IF NOT EXISTS operations(operation_id INTEGER NOT NULL PRIMARY KEY,operation_libelle TEXT,operation_type TEXT,operation_montant REAL, operation_devise TEXT, operation_compte_id INTEGER, operation_facture_id INTEGER, operation_mode TEXT, operation_user_id INTEGER, operation_state TEXT, operation_create_At INTEGER)");
       await db.execute(
-          "CREATE TABLE IF NOT EXISTS sorties(sortie_id INTEGER NOT NULL PRIMARY KEY,sortie_qte REAL, sortie_motif TEXT, sortie_create_At TEXT, sortie_entree_id INTEGER, sortie_state TEXT)");
+          "CREATE TABLE IF NOT EXISTS sorties(sortie_id INTEGER NOT NULL PRIMARY KEY,sortie_qte REAL, sortie_motif TEXT, sortie_create_At TEXT, sortie_produit_id INTEGER, sortie_state TEXT)");
       await db.execute(
-          "CREATE TABLE IF NOT EXISTS entrees(entree_id INTEGER NOT NULL PRIMARY KEY, entree_ref TEXT, entree_qte REAL, entree_prix_achat REAL, entree_prix_devise TEXT, entree_create_At TEXT, entree_produit_id INTEGER, entree_state TEXT)");
+          "CREATE TABLE IF NOT EXISTS entrees(entree_id INTEGER NOT NULL PRIMARY KEY, entree_qte REAL, entree_prix_achat REAL, entree_prix_devise TEXT, entree_create_At TEXT, entree_produit_id INTEGER, entree_state TEXT)");
       await db.execute(
           "CREATE TABLE IF NOT EXISTS produits(produit_id INTEGER NOT NULL PRIMARY KEY, produit_libelle TEXT, produit_create_At TEXT, produit_state TEXT)");
     } catch (e) {

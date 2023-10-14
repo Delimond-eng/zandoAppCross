@@ -1,4 +1,3 @@
-import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
 import 'package:zandoprintapp/services/db.service.dart';
 import 'package:zandoprintapp/ui/widgets/dashline.dart';

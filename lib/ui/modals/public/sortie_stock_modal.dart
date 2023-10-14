@@ -1,9 +1,10 @@
+// ignore_for_file: unnecessary_null_comparison
+
 import 'package:animate_do/animate_do.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import '../../../global/controllers.dart';
 import '../../../models/stock.dart';
@@ -14,10 +15,8 @@ import '../util.dart';
 
 Future<void> showSortieStockModal(context, {VoidCallback? onFinished}) async {
   var produits = await getProduits();
-  List<Entree> entrees = [];
 
   Produit? produit;
-  Entree? entree;
   String? date;
   double soldeStock = 0;
   final txtQte = TextEditingController();
@@ -81,127 +80,16 @@ Future<void> showSortieStockModal(context, {VoidCallback? onFinished}) async {
                   children: [
                     Flexible(
                       child: CustomField(
-                        hintText: "Libellé produit",
+                        hintText: "Sélectionnez produit",
                         iconPath: "assets/icons/label.svg",
                         dropItems: produits,
                         isDropdown: true,
                         onChangedDrop: (val) async {
-                          Produit prod = val;
-                          var list = await getEntrees(prod.produitId!);
-                          Entree? emptyEntree;
                           setter(() {
-                            entree = emptyEntree;
-                            entrees = list;
                             soldeStock = 0;
+                            produit = val as Produit;
                           });
                         },
-                      ),
-                    ),
-                    const SizedBox(
-                      width: 10.0,
-                    ),
-                    Flexible(
-                      child: Container(
-                        height: 50.0,
-                        width: MediaQuery.of(context).size.width,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(5),
-                          color: Colors.white.withOpacity(.7),
-                          border: Border.all(
-                            color: Colors.grey.shade300,
-                            width: 1.2,
-                          ),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10.0,
-                          ),
-                          child: Row(
-                            children: [
-                              Row(
-                                children: [
-                                  SvgPicture.asset(
-                                    "assets/icons/label.svg",
-                                    colorFilter: const ColorFilter.mode(
-                                      primaryColor,
-                                      BlendMode.srcIn,
-                                    ),
-                                    width: 20.0,
-                                  ),
-                                  const SizedBox(
-                                    width: 10.0,
-                                  ),
-                                  Container(
-                                    height: 30.0,
-                                    width: 1,
-                                    color: Colors.grey.shade200,
-                                  ),
-                                  const SizedBox(
-                                    width: 5,
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(
-                                width: 5,
-                              ),
-                              Expanded(
-                                child: DropdownButtonFormField<Entree>(
-                                  menuMaxHeight: 300,
-                                  dropdownColor: Colors.white,
-                                  focusColor: Colors.white,
-                                  isExpanded: true,
-                                  alignment: Alignment.centerLeft,
-                                  style: const TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.black,
-                                    fontSize: 12.0,
-                                  ),
-                                  value: entree,
-                                  decoration: InputDecoration(
-                                    border: InputBorder.none,
-                                    enabledBorder: InputBorder.none,
-                                    focusedBorder: InputBorder.none,
-                                    hintText: "Sélectionner réference stock",
-                                    hintStyle: TextStyle(
-                                      fontFamily: 'Poppins',
-                                      fontSize: 12.0,
-                                      color: Colors.grey.shade800,
-                                      fontWeight: FontWeight.w400,
-                                    ),
-                                    counterText: '',
-                                  ),
-                                  items: entrees.map((e) {
-                                    return DropdownMenuItem<Entree>(
-                                      value: e,
-                                      child: Text(
-                                        e.toString(),
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w500,
-                                          fontSize: 12.0,
-                                          fontFamily: "Poppins",
-                                          color: Colors.black,
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (val) async {
-                                    Entree en = val!;
-                                    double sommeOfSortie =
-                                        await getCountSorties(en.entreeId!);
-
-                                    double solde =
-                                        en.entreeQte! - sommeOfSortie;
-                                    setter(() {
-                                      entree = en;
-                                      soldeStock = solde;
-                                    });
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ),
                     ),
                   ],
@@ -224,7 +112,7 @@ Future<void> showSortieStockModal(context, {VoidCallback? onFinished}) async {
                     ),
                     Flexible(
                       child: CustomField(
-                        hintText: "Date entrée(optionnel)",
+                        hintText: "Date sortie(optionnel)",
                         isDatePicker: true,
                         iconPath: '',
                         onDatePicked: (d) {
@@ -260,20 +148,22 @@ Future<void> showSortieStockModal(context, {VoidCallback? onFinished}) async {
                               "La quantité saisie est invalide !");
                           return;
                         }
-                        if (entree == null) {
+                        if (produit == null) {
                           EasyLoading.showToast(
-                              "La Réference du stock est requise !");
+                              "Veuillez sélectionner stock des produits !");
                           return;
                         }
                         double qte =
                             double.parse(txtQte.text.replaceAll(',', ','));
                         double sommeOfSortie =
-                            await getCountSorties(entree!.entreeId!);
+                            await getCountSorties(produit!.produitId!);
+                        double sommeOfEntree =
+                            await getCountEntrees(produit!.produitId!);
                         /**
                          * check la quantité existante par rapport à la qté de sortie 
                          * pour valider une sortie
                         */
-                        double solde = entree!.entreeQte! - sommeOfSortie;
+                        double solde = sommeOfEntree - sommeOfSortie;
                         double checkSum = solde - qte;
                         if (checkSum.isNegative) {
                           EasyLoading.showToast(
@@ -287,7 +177,7 @@ Future<void> showSortieStockModal(context, {VoidCallback? onFinished}) async {
                         */
                         var db = await DBService.initDb();
                         var data = Sortie(
-                          sortieEntreeId: entree!.entreeId!,
+                          sortieProduitId: produit!.produitId!,
                           sortieMotif: txtMotif.text,
                           sortieQte:
                               double.parse(txtQte.text.replaceAll(',', '.')),
@@ -353,12 +243,22 @@ Future<List<Entree>> getEntrees(int produitId) async {
   return entrees;
 }
 
-Future<double> getCountSorties(int entreeId) async {
+Future<double> getCountSorties(int produitId) async {
   var db = await DBService.initDb();
   var query = await db.rawQuery(
-      "SELECT SUM(sortie_qte) AS somme FROM sorties WHERE NOT sortie_state = 'deleted' AND sortie_entree_id=$entreeId");
-  if (query.first['somme'] == null) {
+      "SELECT TOTAL(sortie_qte) AS total_sorties FROM sorties WHERE NOT sortie_state = 'deleted' AND sortie_produit_id=$produitId");
+  if (query.first['total_sorties'] == null) {
     return 0;
   }
-  return double.parse(query.first['somme'].toString());
+  return double.parse(query.first['total_sorties'].toString());
+}
+
+Future<double> getCountEntrees(int produitId) async {
+  var db = await DBService.initDb();
+  var query = await db.rawQuery(
+      "SELECT TOTAL(entree_qte) AS total_entrees FROM entrees WHERE NOT entree_state = 'deleted' AND entree_produit_id=$produitId");
+  if (query.first['total_entrees'] == null) {
+    return 0;
+  }
+  return double.parse(query.first['total_entrees'].toString());
 }

@@ -29,11 +29,7 @@ class User {
       data["user_role"] = userRole!.toString();
     }
     if (userPass != null) {
-      if (userPass!.length > 20) {
-        data["user_pass"] = userPass!;
-      } else {
-        data["user_pass"] = Cryptage.encrypt(userPass!).toString();
-      }
+      data["user_pass"] = Cryptage.encrypt(userPass!).toString();
     }
     if (userAccess != null) {
       data["user_access"] = userAccess!.toString();

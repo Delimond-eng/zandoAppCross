@@ -58,14 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
     for (var e in query) {
       var user = User.fromMap(e);
       var latestId = await db.rawInsert(
-          "INSERT OR REPLACE INTO users(user_id,user_name, user_role, user_pass, user_access)",
-          [
-            user.userId,
-            user.userName,
-            user.userRole,
-            user.userPass,
-            user.userAccess
-          ]);
+          "INSERT OR REPLACE INTO users(user_id,user_name, user_role, user_pass, user_access) VALUES(${user.userId},'${user.userName}','${user.userRole}','${user.userPass}','${user.userAccess}')");
       print("user : $latestId");
     }
 

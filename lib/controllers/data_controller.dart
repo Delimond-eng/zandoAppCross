@@ -13,7 +13,6 @@ import '../reports/models/dashboard_count.dart';
 import '../reports/report.dart';
 import '../services/db.service.dart';
 import '../services/synchonisation.dart';
-import '../services/utils.dart';
 
 class DataController extends GetxController {
   static DataController instance = Get.find();
@@ -30,9 +29,9 @@ class DataController extends GetxController {
   var paiements = <Operations>[].obs;
   var paiementDetails = <Operations>[].obs;
   var inventories = <Operations>[].obs;
-  var stockEntrees = <Entree>[].obs;
-  var stockSorties = <Sortie>[].obs;
-  var allSorties = <Sortie>[].obs;
+  var allEntrees = <Produit>[].obs;
+  var stocks = <Produit>[].obs;
+  var allSorties = <Produit>[].obs;
   var daySellCount = 0.0.obs;
   var dataLoading = false.obs;
 
@@ -319,46 +318,54 @@ class DataController extends GetxController {
     var db = await DBService.initDb();
     switch (index) {
       case 0:
-        var query = await db.rawQuery(
-            "SELECT * FROM entrees INNER JOIN produits ON entrees.entree_produit_id = produits.produit_id WHERE NOT entrees.entree_state = 'deleted' AND NOT produits.produit_state='deleted'");
-        stockEntrees.clear();
+        var query = await db.rawQuery("""SELECT * FROM entrees 
+            INNER JOIN produits ON
+            entrees.entree_produit_id = produits.produit_id 
+            WHERE NOT entrees.entree_state = 'deleted'
+            AND NOT produits.produit_state='deleted' AND produits.produit_id=$id""");
+        allEntrees.clear();
         for (var e in query) {
-          stockEntrees.add(Entree.fromMap(e));
+          allEntrees.add(Produit.fromMap(e));
         }
         break;
       case 1:
-        var query2 = await db.rawQuery(
-            "SELECT *, TOTAL(sortie_qte) AS total_sortie FROM sorties WHERE NOT sorties.sortie_state = 'deleted' GROUP BY sortie_entree_id ORDER BY sortie_entree_id");
+        var querySorties = await db.rawQuery(
+            "SELECT *, TOTAL(sortie_qte) AS total_sorties FROM sorties WHERE NOT sorties.sortie_state = 'deleted' GROUP BY sortie_produit_id");
+
+        var queryEntrees = await db.rawQuery(
+            "SELECT *,TOTAL(entree_qte) AS total_entrees FROM entrees WHERE NOT entrees.entree_state = 'deleted' GROUP BY entree_produit_id");
 
         var query = await db.rawQuery(
-          """SELECT * FROM entrees
-          INNER JOIN produits ON entrees.entree_produit_id = produits.produit_id
-          AND NOT entrees.entree_state='deleted'
-          AND NOT produits.produit_state='deleted'
-          GROUP BY entrees.entree_id 
-          ORDER BY entrees.entree_id DESC""",
+          """SELECT * FROM produits WHERE NOT produit_state='deleted' 
+          ORDER BY produit_id DESC""",
         );
 
         Map<String, dynamic> map = {};
-        Map<String, dynamic> emptyMap = {
-          "total_sortie": 0.0,
+        Map<String, dynamic> emptySMap = {
+          "total_sorties": 0.0,
           "sortie_id": 0,
           "sortie_motif": "",
-          "sortie_entree_id": 0
+          "sortie_produit_id": 0
         };
-        stockSorties.clear();
+        Map<String, dynamic> emptyEMap = {
+          "total_entrees": 0.0,
+          "entree_id": 0,
+          "entree_produit_id": 0
+        };
+        stocks.clear();
         for (var e in query) {
+          Map<String, dynamic> smap = {};
           Map<String, dynamic> emap = {};
-          if (query2.isNotEmpty) {
-            for (var k in query2) {
-              if (e['entree_id'] == k['sortie_entree_id']) {
+          if (queryEntrees.isNotEmpty) {
+            for (var k in queryEntrees) {
+              if (e['produit_id'] == k['entree_produit_id']) {
                 emap = k;
               }
             }
             if (emap.isEmpty) {
               map
                 ..addAll(e)
-                ..addAll(emptyMap);
+                ..addAll(emptyEMap);
             } else {
               map
                 ..addAll(e)
@@ -367,23 +374,41 @@ class DataController extends GetxController {
           } else {
             map
               ..addAll(e)
-              ..addAll(emptyMap);
+              ..addAll(emptyEMap);
           }
-          stockSorties.add(Sortie.fromMap(map));
+          if (querySorties.isNotEmpty) {
+            for (var k in querySorties) {
+              if (e['produit_id'] == k['sortie_produit_id']) {
+                smap = k;
+              }
+            }
+            if (smap.isEmpty) {
+              map
+                ..addAll(e)
+                ..addAll(emptySMap);
+            } else {
+              map
+                ..addAll(e)
+                ..addAll(smap);
+            }
+          } else {
+            map
+              ..addAll(e)
+              ..addAll(emptySMap);
+          }
+          stocks.add(Produit.fromMap(map));
         }
         break;
       case 2:
         var query = await db.rawQuery("""SELECT * FROM sorties
-            INNER JOIN entrees ON entrees.entree_id = sorties.sortie_entree_id
-            INNER JOIN produits ON produits.produit_id = entrees.entree_produit_id
-            WHERE entrees.entree_id=$id AND NOT sorties.sortie_state='deleted'
-            AND NOT entrees.entree_state = 'deleted' 
+            INNER JOIN produits ON produits.produit_id = sorties.sortie_produit_id
+            WHERE produits.produit_id=$id AND NOT sorties.sortie_state='deleted'
             AND NOT produits.produit_state='deleted'
             ORDER BY sorties.sortie_id DESC
             """);
         allSorties.clear();
         for (var e in query) {
-          allSorties.add(Sortie.fromMap(e));
+          allSorties.add(Produit.fromMap(e));
         }
         break;
     }
