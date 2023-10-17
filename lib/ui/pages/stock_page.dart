@@ -26,10 +26,35 @@ class StockHomePage extends StatefulWidget {
 }
 
 class _StockHomePageState extends State<StockHomePage> {
+  ScrollController controller = ScrollController();
+  bool floatingBtnVisible = true;
+  @override
+  void dispose() {
+    super.dispose();
+    controller.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
     dataController.loadStockData(1);
+    controller.addListener(() {
+      if (controller.position.pixels == controller.position.maxScrollExtent) {
+        setState(() {
+          floatingBtnVisible = false;
+        });
+      } else {
+        if (controller.position.pixels > 200) {
+          setState(() {
+            floatingBtnVisible = false;
+          });
+        } else {
+          setState(() {
+            floatingBtnVisible = true;
+          });
+        }
+      }
+    });
   }
 
   @override
@@ -44,50 +69,54 @@ class _StockHomePageState extends State<StockHomePage> {
           )
         ],
       ),
-      floatingActionButton: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton.extended(
-            heroTag: "1",
-            backgroundColor: primaryColor,
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4.0)),
-            onPressed: () async {
-              showCreateStockModal(context);
-            },
-            icon: const Icon(
-              CupertinoIcons.add,
-              size: 14.0,
-            ),
-            label: const Text(
-              "Nouvelle entrée ",
-              style: TextStyle(color: Colors.white, fontFamily: defaultFont),
-            ),
-          ),
-          const SizedBox(
-            width: 5.0,
-          ),
-          FloatingActionButton.extended(
-            heroTag: "2",
-            backgroundColor: Colors.white,
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4.0)),
-            onPressed: () async {
-              showSortieStockModal(context, onFinished: () {
-                dataController.loadStockData(1);
-              });
-            },
-            icon:
-                const Icon(CupertinoIcons.minus, size: 14.0, color: Colors.red),
-            label: const Text(
-              "Sortie",
-              style: TextStyle(color: Colors.red, fontFamily: defaultFont),
-            ),
-          ),
-        ],
-      ),
+      floatingActionButton: floatingBtnVisible
+          ? Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                FloatingActionButton.extended(
+                  heroTag: "1",
+                  backgroundColor: primaryColor,
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4.0)),
+                  onPressed: () async {
+                    showCreateStockModal(context);
+                  },
+                  icon: const Icon(
+                    CupertinoIcons.add,
+                    size: 14.0,
+                  ),
+                  label: const Text(
+                    "Nouvelle entrée ",
+                    style:
+                        TextStyle(color: Colors.white, fontFamily: defaultFont),
+                  ),
+                ),
+                const SizedBox(
+                  width: 5.0,
+                ),
+                FloatingActionButton.extended(
+                  heroTag: "2",
+                  backgroundColor: Colors.white,
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4.0)),
+                  onPressed: () async {
+                    showSortieStockModal(context, onFinished: () {
+                      dataController.loadStockData(1);
+                    });
+                  },
+                  icon: const Icon(CupertinoIcons.minus,
+                      size: 14.0, color: Colors.red),
+                  label: const Text(
+                    "Sortie",
+                    style:
+                        TextStyle(color: Colors.red, fontFamily: defaultFont),
+                  ),
+                ),
+              ],
+            )
+          : null,
     );
   }
 
@@ -96,6 +125,7 @@ class _StockHomePageState extends State<StockHomePage> {
       () => dataController.stocks.isEmpty
           ? const EmptyState()
           : ListView.builder(
+              controller: controller,
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.all(10.0),
               itemCount: dataController.stocks.length,
