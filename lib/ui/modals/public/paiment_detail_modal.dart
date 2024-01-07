@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
+import '../../../models/operation.dart';
+import '../../../services/api.dart';
+import '../../../utilities/modals.dart';
+import '../../widgets/dashline.dart';
 import '/global/controllers.dart';
 import '/services/db.service.dart';
 
 import '../../../config/utils.dart';
-import '../../../models/operation.dart';
-import '../../widgets/dashline.dart';
 import '../util.dart';
 
 Future<void> showPaiementDetail(context) async {
@@ -18,37 +21,29 @@ Future<void> showPaiementDetail(context) async {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(15.0, 40.0, 15.0, 15.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(40, 10, 0, 0),
-                  child: Text(
-                    "Paiement détails",
-                    style: TextStyle(
-                      fontFamily: defaultFont,
-                      color: defaultTextColor,
-                      fontSize: 20.0,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-                Obx(
-                  () => ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: dataController.paiementDetails.length,
-                    itemBuilder: (context, index) {
-                      var detail = dataController.paiementDetails[index];
-                      return PaiementDetailCard(
-                        detail: detail,
-                      );
-                    },
-                  ),
-                )
-              ],
+          const Padding(
+            padding: EdgeInsets.fromLTRB(40, 15, 0, 0),
+            child: Text(
+              "Paiement détails",
+              style: TextStyle(
+                fontFamily: defaultFont,
+                color: defaultTextColor,
+                fontSize: 20.0,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          Obx(
+            () => ListView.builder(
+              padding: const EdgeInsets.all(10.0),
+              shrinkWrap: true,
+              itemCount: dataController.paiementDetails.length,
+              itemBuilder: (context, index) {
+                var detail = dataController.paiementDetails[index];
+                return PaiementDetailCard(
+                  detail: detail,
+                );
+              },
             ),
           )
         ],
@@ -58,7 +53,7 @@ Future<void> showPaiementDetail(context) async {
 }
 
 class PaiementDetailCard extends StatelessWidget {
-  final Operations detail;
+  final Operation detail;
   const PaiementDetailCard({super.key, required this.detail});
 
   @override
@@ -93,7 +88,7 @@ class PaiementDetailCard extends StatelessWidget {
                           size: 15.0,
                         ),
                         Text(
-                          detail.operationDate!.split('-').first,
+                          detail.operationCreateAt!,
                           style: const TextStyle(
                             fontSize: 12.0,
                             fontFamily: defaultFont,
@@ -102,15 +97,6 @@ class PaiementDetailCard extends StatelessWidget {
                           ),
                         ),
                       ],
-                    ),
-                    Text(
-                      "${detail.operationDate!.split('-')[1]}/${detail.operationDate!.split('-').last}",
-                      style: const TextStyle(
-                        fontSize: 10.0,
-                        fontFamily: defaultFont,
-                        fontWeight: FontWeight.w500,
-                        color: defaultTextColor,
-                      ),
                     ),
                   ],
                 ),
@@ -231,7 +217,7 @@ class PaiementDetailCard extends StatelessWidget {
                         height: 2.0,
                       ),
                       Text(
-                        detail.client!.clientNom!,
+                        detail.facture!.client!.clientNom!,
                         style: const TextStyle(
                           fontSize: 12.0,
                           fontFamily: defaultFont,
@@ -304,28 +290,33 @@ class PaiementDetailCard extends StatelessWidget {
     );
   }
 
-  deletePaiement(BuildContext context, Operations data) async {
-    var db = await DBService.initDb();
-    // ignore: use_build_context_synchronously
+  deletePaiement(BuildContext context, Operation data) async {
     DGCustomDialog.showInteraction(context,
-        message: "Etes-vous sûr de vouloir supprimer ce paiement ?",
+        message:
+            "Etes-vous sûr de vouloir supprimer ce paiement ? Attention! cette action est irréversible !",
         onValidated: () {
-      db
-          .update(
-        'factures',
-        {'facture_statut': 'en cours'},
-        where: 'facture_id = ?',
-        whereArgs: [data.operationFactureId],
-      )
-          .then((id) {
-        db.update(
-          "operations",
-          {"operation_state": "deleted"},
-          where: "operation_id=?",
-          whereArgs: [data.operationId],
-        );
+      Xloading.showLottieLoading(context);
+      Api.request(
+        url: 'data.delete',
+        method: 'post',
+        body: {
+          "table": "operations",
+          "id": data.id,
+          "state": "operation_state",
+        },
+      ).then((value) async {
+        Xloading.dismiss();
+        await Api.request(url: "data.disable", method: "post", body: {
+          "table": "factures",
+          "id": int.tryParse(data.factureId.toString()),
+          "state": "facture_status",
+          "state_val": "en attente",
+        });
         dataController.loadPayments("all");
         Get.back();
+      }).catchError((e) {
+        EasyLoading.showToast("Echec de traitement des informations !");
+        Xloading.dismiss();
       });
     });
   }

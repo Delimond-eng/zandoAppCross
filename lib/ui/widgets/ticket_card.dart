@@ -9,6 +9,7 @@ class TicketCard extends StatelessWidget {
     this.padding,
     this.margin,
     this.color = Colors.white,
+    this.borderColor,
     this.isCornerRounded = false,
     this.shadow,
   });
@@ -17,6 +18,7 @@ class TicketCard extends StatelessWidget {
   final double? height;
   final Widget child;
   final Color color;
+  final Color? borderColor;
   final bool isCornerRounded;
   final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
@@ -39,6 +41,9 @@ class TicketCard extends StatelessWidget {
           borderRadius: isCornerRounded
               ? BorderRadius.circular(5.0)
               : BorderRadius.circular(0.0),
+          border: borderColor != null
+              ? Border.all(color: borderColor!.withOpacity(.5), width: 1.5)
+              : null,
         ),
         child: child,
       ),

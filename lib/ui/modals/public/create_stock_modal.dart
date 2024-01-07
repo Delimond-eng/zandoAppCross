@@ -1,11 +1,11 @@
 import 'package:animate_do/animate_do.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:get/get.dart';
-import '/global/controllers.dart';
-import '/services/db.service.dart';
+import 'package:zandoprintapp/global/controllers.dart';
+import 'package:zandoprintapp/services/api.dart';
+import 'package:zandoprintapp/ui/widgets/submit_btn.dart';
 import '../../../models/stock.dart';
 import '/ui/widgets/custom_field.dart';
 
@@ -17,14 +17,14 @@ Future<void> showCreateStockModal(context) async {
   bool isNew = true;
   bool isOld = false;
   Produit? produit;
-  List<Produit> produits = [];
-
+  List<Produit> produits = List.from(dataController.stocks);
   //Fields;
   final txtLibProduit = TextEditingController();
   final txtQteProduit = TextEditingController();
   final txtPrixAchatProduit = TextEditingController();
   String devise = "USD";
   String? date;
+  bool isLoading = false;
   showCustomModal(
     context,
     width: MediaQuery.of(context).size.width / 1.20,
@@ -57,7 +57,9 @@ Future<void> showCreateStockModal(context) async {
                         title: "Stock pour un nouveau produit",
                         value: isNew,
                         onChanged: () {
+                          Produit? p;
                           setter(() {
+                            produit = p;
                             isNew = true;
                             isOld = false;
                           });
@@ -72,13 +74,15 @@ Future<void> showCreateStockModal(context) async {
                         title: "Stock pour un produit existant",
                         value: isOld,
                         onChanged: () async {
+                          Produit? p;
                           setter(() {
+                            produit = p;
                             isOld = true;
                             isNew = false;
                           });
                           if (isOld) {
-                            var p = await getProduits();
-                            setter(() => produits = p);
+                            setter(() =>
+                                produits = List.from(dataController.stocks));
                           }
                         },
                       ),
@@ -98,6 +102,7 @@ Future<void> showCreateStockModal(context) async {
                         iconPath: "assets/icons/label.svg",
                         dropItems: produits,
                         isDropdown: isOld,
+                        selectedValue: produit,
                         onChangedDrop: (val) {
                           setter(() => produit = val);
                         },
@@ -153,8 +158,10 @@ Future<void> showCreateStockModal(context) async {
                 ),
                 SizedBox(
                   height: 50.0,
+                  width: 220.0,
                   child: ZoomIn(
-                    child: ElevatedButton.icon(
+                    child: SubmitButton(
+                      loading: isLoading,
                       onPressed: () async {
                         if (txtPrixAchatProduit.text.isEmpty) {
                           EasyLoading.showToast("Prix d'achat requis !");
@@ -164,75 +171,79 @@ Future<void> showCreateStockModal(context) async {
                           EasyLoading.showToast("Prix d'achat requis !");
                           return;
                         }
-
                         if (!txtQteProduit.text.isNum) {
                           EasyLoading.showToast("Quantité stock invalide !");
                           return;
                         }
-                        var db = await DBService.initDb();
-                        int? latestProduitId;
-                        var beContinued =
-                            await DBService.checkAvailability("produits");
-                        if (beContinued) {
-                          EasyLoading.showToast(
-                              "Vous utiliser une version d'essai !, pour continuer cette appli doit être activée !");
-                          return;
-                        }
                         if (isNew) {
-                          produit = Produit(
-                              produitLibelle: txtLibProduit.text,
-                              produitCreateAt: date);
-                          latestProduitId =
-                              await db.insert("produits", produit!.toMap());
-                        }
-
-                        var entree = Entree(
-                          entreePrixAchat: double.parse(
-                              txtPrixAchatProduit.text.replaceAll(',', '.')),
-                          entreePrixDevise: devise,
-                          entreeQte: double.parse(
-                              txtQteProduit.text.replaceAll(',', '.')),
-                          entreeCreateAt: date,
-                          entreeProduitId:
-                              latestProduitId ?? produit!.produitId,
-                        );
-                        var beContinued2 =
-                            await DBService.checkAvailability("entrees");
-                        if (beContinued2) {
-                          EasyLoading.showToast(
-                              "Vous utiliser une version d'essai !, pour continuer cette appli doit être activée !");
-                          return;
-                        }
-                        db.insert("entrees", entree.toMap()).then((value) {
-                          setter(() {
-                            txtLibProduit.clear();
-                            txtQteProduit.clear();
-                            txtPrixAchatProduit.clear();
+                          setter(() => isLoading = true);
+                          Api.request(
+                                  url: 'product.create',
+                                  method: 'post',
+                                  body: {"produit_libelle": txtLibProduit.text})
+                              .then((res) async {
+                            setter(() => isLoading = false);
+                            if (res.containsKey("errors")) {
+                              EasyLoading.showToast(res['errors'].toString());
+                            }
+                            if (res.containsKey('status')) {
+                              int produitId =
+                                  int.parse(res['produit']['id'].toString());
+                              Api.request(
+                                  url: 'stock.append',
+                                  method: 'post',
+                                  body: {
+                                    "entree_qte": txtQteProduit.text,
+                                    "entree_prix_achat":
+                                        txtPrixAchatProduit.text,
+                                    "entree_prix_devise": devise,
+                                    "produit_id": produitId
+                                  }).then((value) {
+                                Produit? p;
+                                setter(() {
+                                  produit = p;
+                                  txtLibProduit.clear();
+                                  txtQteProduit.clear();
+                                  txtPrixAchatProduit.clear();
+                                });
+                                dataController.loadStockData();
+                                EasyLoading.showSuccess(
+                                  "Nouveau stock créé avec succès !",
+                                );
+                              });
+                            }
+                          }).catchError((e) {
+                            setter(() => isLoading = false);
                           });
-                          dataController.loadStockData(1);
-                          EasyLoading.showSuccess(
-                            "Nouveau stock créé avec succès !",
-                          );
-                        }).catchError((e) {
-                          if (kDebugMode) {
-                            print("error from insert statment ! : $e");
-                          }
-                          return e;
-                        });
+                        } else {
+                          setter(() => isLoading = true);
+                          Api.request(
+                              url: 'stock.append',
+                              method: 'post',
+                              body: {
+                                "entree_qte": txtQteProduit.text,
+                                "entree_prix_achat": txtPrixAchatProduit.text,
+                                "entree_prix_devise": devise,
+                                "produit_id": produit!.id
+                              }).then((res) {
+                            Produit? p;
+                            setter(() {
+                              produit = p;
+                              isLoading = false;
+                              txtLibProduit.clear();
+                              txtQteProduit.clear();
+                              txtPrixAchatProduit.clear();
+                            });
+                            dataController.loadStockData();
+                            EasyLoading.showSuccess(
+                              "Nouveau stock créé avec succès !",
+                            );
+                          });
+                        }
                       },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        elevation: 10.0,
-                        textStyle: const TextStyle(
-                          fontFamily: defaultFont,
-                          color: lightColor,
-                          fontSize: 14.0,
-                        ),
-                      ),
-                      icon: const Icon(CupertinoIcons.add, size: 16.0),
-                      label: const Text(
-                        "Créer nouveau stock",
-                      ),
+                      color: Colors.green,
+                      icon: CupertinoIcons.add,
+                      label: "Créer nouveau stock",
                     ),
                   ),
                 )
@@ -243,15 +254,4 @@ Future<void> showCreateStockModal(context) async {
       ],
     ),
   );
-}
-
-Future<List<Produit>> getProduits() async {
-  List<Produit> products = [];
-  var db = await DBService.initDb();
-  var query = await db
-      .rawQuery("SELECT * FROM produits WHERE NOT produit_state = 'deleted'");
-  for (var e in query) {
-    products.add(Produit.fromMap(e));
-  }
-  return products;
 }

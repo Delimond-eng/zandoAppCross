@@ -1,4 +1,4 @@
-// ignore_for_file: depend_on_referenced_packages, unnecessary_null_comparison
+/* // ignore_for_file: depend_on_referenced_packages, unnecessary_null_comparison
 
 import 'dart:convert';
 import 'dart:io';
@@ -173,3 +173,4 @@ class Sync {
     return false;
   }
 }
+ */

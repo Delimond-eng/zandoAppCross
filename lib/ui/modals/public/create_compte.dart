@@ -77,13 +77,13 @@ Future<void> showCreateCompteModal(context) async {
                         compteDevise: _devise,
                         compteLibelle: _libelle.text,
                       );
-                      await db.insert("comptes", compte.toMap()).then(
+                      /* await db.insert("comptes", compte.toMap()).then(
                         (id) {
                           dataController.loadAllComptes();
                           dataController.loadActivatedComptes();
                           Get.back();
                         },
-                      );
+                      ); */
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primaryColor,

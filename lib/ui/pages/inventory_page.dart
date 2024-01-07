@@ -32,7 +32,7 @@ class _InventoryPageState extends State<InventoryPage> {
 
   initData() async {
     var m = await Report.getMonths();
-    initTot();
+    /*  */
     setState(() {
       months.clear();
       months.addAll(m);
@@ -44,7 +44,7 @@ class _InventoryPageState extends State<InventoryPage> {
 
   double get _solde => _entrees - _sorties;
 
-  initTot({String? key}) async {
+  /* initTot({String? key}) async {
     double en = 0;
     double so = 0;
     if (key == "all") {
@@ -61,7 +61,7 @@ class _InventoryPageState extends State<InventoryPage> {
     _entrees = en;
     _sorties = so;
   }
-
+ */
   @override
   void initState() {
     super.initState();
@@ -126,9 +126,8 @@ class _InventoryPageState extends State<InventoryPage> {
                               setState(() {
                                 date = idate;
                               });
-                              await dataController.loadInventories("date",
-                                  fkey: date);
-                              initTot();
+                              /* await dataController.loadInventories("date",
+                                  fkey: date); */
                             },
                             borderRadius: BorderRadius.circular(5.0),
                             child: Padding(
@@ -167,9 +166,9 @@ class _InventoryPageState extends State<InventoryPage> {
                                             setState(() {
                                               date = null;
                                             });
-                                            await dataController
-                                                .loadInventories("all");
-                                            initTot(key: "all");
+                                            /* await dataController
+                                                .loadInventories("all"); */
+                                            /* initTot(key: "all"); */
                                           }),
                                         ]
                                       ],
@@ -206,11 +205,9 @@ class _InventoryPageState extends State<InventoryPage> {
                                 setState(() {
                                   compte = val;
                                 });
-                                await dataController.loadInventories("compte",
-                                    fkey: val.compteId);
-                                setState(() {
-                                  initTot();
-                                });
+                                /* await dataController.loadInventories("compte",
+                                    fkey: val.compteId); */
+                                setState(() {});
                               });
                             },
                             borderRadius: BorderRadius.circular(5.0),
@@ -259,9 +256,8 @@ class _InventoryPageState extends State<InventoryPage> {
                                               setState(() {
                                                 compte = null;
                                               });
-                                              await dataController
-                                                  .loadInventories("all");
-                                              initTot();
+                                              /* await dataController
+                                                  .loadInventories("all"); */
                                             },
                                           ),
                                         ] else ...[
@@ -295,11 +291,10 @@ class _InventoryPageState extends State<InventoryPage> {
                             setState(() {
                               mois = val;
                             });
-                            dataController.loadInventories(
+                            /* dataController.loadInventories(
                               "mois",
                               fkey: mois!.value,
-                            );
-                            initTot();
+                            ); */
                           }),
                     )
                   ],

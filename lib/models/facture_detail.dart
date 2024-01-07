@@ -1,10 +1,9 @@
-import '../services/utils.dart';
-
 class FactureDetail {
   dynamic factureDetailId;
   String? factureDetailLibelle;
   dynamic factureDetailQte;
   String? factureDetailPu;
+  String? factureDetailNature;
   String? factureDetailDevise;
   dynamic factureId;
   dynamic factureDetailTimestamp;
@@ -17,10 +16,9 @@ class FactureDetail {
     this.factureDetailLibelle,
     this.factureDetailQte,
     this.factureDetailPu,
+    this.factureDetailNature,
     this.factureDetailDevise,
     this.factureId,
-    this.factureDetailTimestamp,
-    this.factureDetailState,
   });
 
   Map<String, dynamic> toMap() {
@@ -51,7 +49,10 @@ class FactureDetail {
     if (factureDetailDevise != null) {
       data["facture_detail_devise"] = factureDetailDevise;
     }
-    DateTime now =
+    if (factureDetailNature != null) {
+      data['facture_detail_nature'] = factureDetailNature;
+    }
+    /*   DateTime now =
         DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
     if (factureDetailTimestamp == null) {
       data["facture_detail_create_At"] = dateToString(now);
@@ -62,7 +63,7 @@ class FactureDetail {
       data["facture_id"] = int.parse(factureId.toString());
     }
     data["facture_detail_state"] = factureDetailState ?? "allowed";
-
+ */
     return data;
   }
 
@@ -71,9 +72,8 @@ class FactureDetail {
     factureDetailLibelle = data["facture_detail_libelle"];
     factureDetailQte = data["facture_detail_qte"];
     factureDetailPu = data["facture_detail_pu"].toString();
+    factureDetailNature = data['facture_detail_nature'];
     factureDetailDevise = data["facture_detail_devise"];
-    factureDetailTimestamp = data["facture_detail_create_At"].toString();
-    factureDetailState = data["facture_detail_state"];
     factureId = data["facture_id"];
   }
 
@@ -82,12 +82,26 @@ class FactureDetail {
       case 0:
         return factureDetailLibelle!;
       case 1:
-        return "$factureDetailPu  $factureDetailDevise";
+        return factureDetailNature!;
       case 2:
-        return "$factureDetailQte";
+        return "$factureDetailPu  $factureDetailDevise";
       case 3:
+        return "$factureDetailQte";
+      case 4:
         return "$total  $factureDetailDevise";
     }
     return '';
   }
+
+  // Écrivez une méthode equals pour comparer les objets Item
+  @override
+  bool operator ==(other) {
+    return (other is FactureDetail) &&
+        other.factureDetailLibelle == factureDetailLibelle &&
+        other.factureDetailNature == factureDetailNature;
+  }
+
+  @override
+  int get hashCode =>
+      factureDetailLibelle.hashCode ^ factureDetailLibelle.hashCode;
 }

@@ -71,7 +71,7 @@ class UserAvatar extends StatelessWidget {
                       Text(
                         authController.user.value.userRole!,
                         style: TextStyle(
-                          color: Colors.grey.shade300,
+                          color: Colors.grey.shade600,
                           fontFamily: defaultFont,
                           fontWeight: FontWeight.w400,
                           fontSize: 10.0,

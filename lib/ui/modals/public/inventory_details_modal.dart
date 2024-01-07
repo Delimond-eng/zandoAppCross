@@ -7,7 +7,8 @@ import '../../widgets/dashline.dart';
 import '../util.dart';
 
 Future<void> showInventoryDetails(context, opId) async {
-  var details = await getInventoryDetails(opId);
+  /* var details = await getInventoryDetails(opId); */
+  var details = null;
   showCustomModal(
     context,
     width: MediaQuery.of(context).size.width / 1.50,
@@ -54,14 +55,14 @@ Future<void> showInventoryDetails(context, opId) async {
 }
 
 class InventoryDetailsCard extends StatelessWidget {
-  final Operations detail;
+  final Operation detail;
   const InventoryDetailsCard({super.key, required this.detail});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Container(
+        /* Container(
           height: 55.0,
           width: MediaQuery.of(context).size.width,
           decoration: BoxDecoration(
@@ -177,19 +178,8 @@ class InventoryDetailsCard extends StatelessWidget {
           space: 5.0,
           color: Colors.grey.shade400,
           height: .5,
-        )
+        ) */
       ],
     );
   }
-}
-
-Future<List<Operations>> getInventoryDetails(int? id) async {
-  List<Operations> datas = [];
-  var db = await DBService.initDb();
-  var query = await db.rawQuery(
-      "SELECT * FROM operations INNER JOIN factures ON operations.operation_facture_id = factures.facture_id WHERE operations.operation_id=$id AND NOT operations.operation_state='deleted' AND NOT factures.facture_state='deleted'");
-  for (var e in query) {
-    datas.add(Operations.fromMap(e));
-  }
-  return datas;
 }

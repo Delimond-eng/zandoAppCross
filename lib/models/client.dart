@@ -1,5 +1,5 @@
 import '../global/controllers.dart';
-import '../services/utils.dart';
+import 'facture.dart';
 
 class Client {
   dynamic clientId;
@@ -10,6 +10,7 @@ class Client {
   String? clientCreatAt;
   String? clientState;
   dynamic clientTimestamp;
+  List<Facture>? factures;
 
   bool isSelected = false;
   Client({
@@ -38,23 +39,14 @@ class Client {
     } else {
       data["user_id"] = int.parse(userId.toString());
     }
-    DateTime now =
-        DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
-
-    if (clientTimestamp == null) {
-      data["client_create_At"] = dateToString(now);
-    } else {
-      data["client_create_At"] = clientTimestamp.toString();
-    }
-    data["client_state"] = clientState ?? "allowed";
     return data;
   }
 
   Client.fromMap(Map<String, dynamic> data) {
-    clientId = data["client_id"];
+    clientId = data["id"];
     clientNom = data["client_nom"];
-    clientTel = data["client_tel"];
-    clientAdresse = data["client_adresse"];
+    clientTel = data["client_tel"] ?? ".....";
+    clientAdresse = data["client_adresse"] ?? ".....";
     if (data["client_state"] != null) {
       clientState = data["client_state"];
     }
@@ -62,11 +54,13 @@ class Client {
       userId = data["user_id"];
     }
     if (data["client_create_At"] != null) {
-      try {
-        clientTimestamp = data["client_create_At"];
-        DateTime date = parseTimestampToDate(data["client_create_At"]);
-        clientCreatAt = dateToString(date);
-      } catch (err) {}
+      clientTimestamp = data["client_create_At"];
+      clientCreatAt = data["client_create_At"];
+    }
+    if (data['factures'] != null) {
+      factures = (data['factures'] as List<dynamic>?)
+          ?.map((e) => Facture.fromMap(e as Map<String, dynamic>))
+          .toList();
     }
   }
 }

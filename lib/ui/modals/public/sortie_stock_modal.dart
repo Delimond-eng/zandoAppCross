@@ -2,25 +2,25 @@
 
 import 'package:animate_do/animate_do.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:get/get.dart';
-import '../../../global/controllers.dart';
+import 'package:zandoprintapp/global/controllers.dart';
+import 'package:zandoprintapp/services/api.dart';
+import 'package:zandoprintapp/ui/widgets/submit_btn.dart';
 import '../../../models/stock.dart';
-import '../../../services/db.service.dart';
 import '/ui/widgets/custom_field.dart';
 import '../../../config/utils.dart';
 import '../util.dart';
 
-Future<void> showSortieStockModal(context, {VoidCallback? onFinished}) async {
-  var produits = await getProduits();
-
+Future<void> showSortieStockModal(context) async {
+  List<Produit> produits = List.from(dataController.stocks);
   Produit? produit;
   String? date;
   double soldeStock = 0;
   final txtQte = TextEditingController();
   final txtMotif = TextEditingController();
+  bool isLoading = false;
   showCustomModal(
     context,
     width: MediaQuery.of(context).size.width / 1.20,
@@ -84,10 +84,11 @@ Future<void> showSortieStockModal(context, {VoidCallback? onFinished}) async {
                         iconPath: "assets/icons/label.svg",
                         dropItems: produits,
                         isDropdown: true,
+                        selectedValue: produit,
                         onChangedDrop: (val) async {
                           setter(() {
                             soldeStock = 0;
-                            produit = val as Produit;
+                            produit = val;
                           });
                         },
                       ),
@@ -135,8 +136,10 @@ Future<void> showSortieStockModal(context, {VoidCallback? onFinished}) async {
                 ),
                 SizedBox(
                   height: 50.0,
+                  width: 200.0,
                   child: ZoomIn(
-                    child: ElevatedButton.icon(
+                    child: SubmitButton(
+                      loading: isLoading,
                       onPressed: () async {
                         if (txtQte.text.isEmpty) {
                           EasyLoading.showToast(
@@ -153,62 +156,30 @@ Future<void> showSortieStockModal(context, {VoidCallback? onFinished}) async {
                               "Veuillez sélectionner stock des produits !");
                           return;
                         }
-                        double qte =
-                            double.parse(txtQte.text.replaceAll(',', ','));
-                        double sommeOfSortie =
-                            await getCountSorties(produit!.produitId!);
-                        double sommeOfEntree =
-                            await getCountEntrees(produit!.produitId!);
-                        /**
-                         * check la quantité existante par rapport à la qté de sortie 
-                         * pour valider une sortie
-                        */
-                        double solde = sommeOfEntree - sommeOfSortie;
-                        double checkSum = solde - qte;
-                        if (checkSum.isNegative) {
-                          EasyLoading.showToast(
-                            "La quantité du stock restant est inférieur à la quantité saisie \n La quantité du stock actuel est de : $solde unités",
-                            duration: const Duration(seconds: 3),
-                          );
-                          return;
-                        }
-                        /**
-                         * Insertion des données dans la base de données !
-                        */
-                        var db = await DBService.initDb();
-                        var data = Sortie(
-                          sortieProduitId: produit!.produitId!,
-                          sortieMotif: txtMotif.text,
-                          sortieQte:
-                              double.parse(txtQte.text.replaceAll(',', '.')),
-                          sortieCreateAt: date,
-                        );
-                        db.insert("sorties", data.toMap()).then((value) {
-                          EasyLoading.showSuccess(
-                              "Une sortie est effectué avec succès !");
-                          dataController.loadStockData(1);
-                          Get.back();
-                        }).catchError((e) {
-                          if (kDebugMode) {
-                            print(e);
+                        setter(() => isLoading = true);
+                        Api.request(url: 'stock.reduce', method: 'post', body: {
+                          "sortie_motif": txtMotif.text,
+                          "sortie_qte": txtQte.text,
+                          "produit_id": produit!.id
+                        }).then((res) {
+                          setter(() => isLoading = false);
+                          if (res.containsKey('errors')) {
+                            EasyLoading.showToast(res['errors'].toString());
+                            return;
                           }
-                          return e;
+                          if (res.containsKey('status')) {
+                            EasyLoading.showSuccess(
+                                'Sortie stock effectuée avec succès !');
+                            dataController.loadStockData();
+                            Get.back();
+                          }
+                        }).catchError((err) {
+                          setter(() => isLoading = true);
                         });
                       },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.lightGreen,
-                        elevation: 10.0,
-                        textStyle: const TextStyle(
-                          fontFamily: defaultFont,
-                          color: lightColor,
-                          fontSize: 14.0,
-                        ),
-                      ),
-                      icon:
-                          const Icon(CupertinoIcons.checkmark_alt, size: 16.0),
-                      label: const Text(
-                        "Valider la sortie",
-                      ),
+                      color: Colors.orange,
+                      icon: CupertinoIcons.checkmark_alt,
+                      label: "Valider la sortie",
                     ),
                   ),
                 )
@@ -219,46 +190,4 @@ Future<void> showSortieStockModal(context, {VoidCallback? onFinished}) async {
       );
     }),
   );
-}
-
-Future<List<Produit>> getProduits() async {
-  List<Produit> products = [];
-  var db = await DBService.initDb();
-  var query = await db
-      .rawQuery("SELECT * FROM produits WHERE NOT produit_state = 'deleted'");
-  for (var e in query) {
-    products.add(Produit.fromMap(e));
-  }
-  return products;
-}
-
-Future<List<Entree>> getEntrees(int produitId) async {
-  List<Entree> entrees = [];
-  var db = await DBService.initDb();
-  var query = await db.rawQuery(
-      "SELECT * FROM entrees WHERE NOT entree_state = 'deleted' AND entree_produit_id=$produitId");
-  for (var e in query) {
-    entrees.add(Entree.fromMap(e));
-  }
-  return entrees;
-}
-
-Future<double> getCountSorties(int produitId) async {
-  var db = await DBService.initDb();
-  var query = await db.rawQuery(
-      "SELECT TOTAL(sortie_qte) AS total_sorties FROM sorties WHERE NOT sortie_state = 'deleted' AND sortie_produit_id=$produitId");
-  if (query.first['total_sorties'] == null) {
-    return 0;
-  }
-  return double.parse(query.first['total_sorties'].toString());
-}
-
-Future<double> getCountEntrees(int produitId) async {
-  var db = await DBService.initDb();
-  var query = await db.rawQuery(
-      "SELECT TOTAL(entree_qte) AS total_entrees FROM entrees WHERE NOT entree_state = 'deleted' AND entree_produit_id=$produitId");
-  if (query.first['total_entrees'] == null) {
-    return 0;
-  }
-  return double.parse(query.first['total_entrees'].toString());
 }

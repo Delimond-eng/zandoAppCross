@@ -1,6 +1,8 @@
 import '../global/controllers.dart';
 import '../services/utils.dart';
 import 'client.dart';
+import 'facture_detail.dart';
+import 'operation.dart';
 import 'user.dart';
 
 class Facture {
@@ -14,6 +16,8 @@ class Facture {
   dynamic factureClientId;
   String? factureTimestamp;
   int? factureUserId;
+  List<FactureDetail>? details;
+  List<Operation>? paiements;
 
   Client? client;
   User? user;
@@ -61,21 +65,55 @@ class Facture {
   }
 
   Facture.fromMap(Map<String, dynamic> data) {
-    factureId = data["facture_id"];
+    factureId = data["id"];
     factureMontant = data["facture_montant"].toString();
     factureDevise = data["facture_devise"];
-    factureClientId = data["facture_client_id"];
-    factureStatut = data["facture_statut"];
+    factureClientId = data["client_id"];
+    factureUserId = data['user_id'];
+    factureStatut = data["facture_status"];
     factureTimestamp = data["facture_create_At"].toString();
     factureState = data["facture_state"];
-    if (data["client_id"] != null) {
-      client = Client.fromMap(data);
+    factureDateCreate = data["facture_create_At"];
+    if (data["client"] != null) {
+      client = Client.fromMap(data['client']);
     }
-    if (data["user_id"] != null) {
-      user = User.fromMap(data);
+    if (data["user"] != null) {
+      user = User.fromMap(data['user']);
     }
-    try {
-      factureDateCreate = data["facture_create_At"];
-    } catch (err) {}
+    if (data['details'] != null) {
+      details = (data['details'] as List<dynamic>?)
+          ?.map((e) => FactureDetail.fromMap(e as Map<String, dynamic>))
+          .toList();
+    }
+    if (data['paiements'] != null) {
+      paiements = (data['paiements'] as List<dynamic>?)
+          ?.map((e) => Operation.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
+  }
+
+  double get restToPay {
+    double rest = 0;
+    if (paiements!.isEmpty) {
+      rest = double.parse(factureMontant!);
+    } else {
+      double amount = 0;
+      for (var paie in paiements!) {
+        amount += double.parse(paie.operationMontant!.toString());
+      }
+      rest = double.parse(
+          (double.parse(factureMontant!) - amount).toStringAsFixed(2));
+    }
+    return rest;
+  }
+
+  double get totPay {
+    double tot = 0;
+    if (paiements!.isNotEmpty) {
+      for (var paie in paiements!) {
+        tot += double.parse(paie.operationMontant!.toString());
+      }
+    }
+    return double.parse((tot).toStringAsFixed(2));
   }
 }

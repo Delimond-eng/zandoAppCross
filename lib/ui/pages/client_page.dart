@@ -1,13 +1,10 @@
 // ignore_for_file: empty_catches
 
-import 'dart:io';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:flutter/scheduler.dart';
 import '/config/utils.dart';
 import '/global/controllers.dart';
-import '/services/db.service.dart';
 import '/ui/components/custom_appbar.dart';
 import '/ui/modals/public/create_client.dart';
 import '/ui/widgets/client_card.dart';
@@ -25,6 +22,25 @@ class ClientPage extends StatefulWidget {
 
 class _ClientPageState extends State<ClientPage> {
   List<Client> clients = [];
+
+  @override
+  void initState() {
+    super.initState();
+    SchedulerBinding.instance.addPostFrameCallback((_) async {
+      dataController.dataLoading.value = true;
+      dataController.loadClients().then((res) {
+        dataController.dataLoading.value = false;
+      });
+    });
+    dataController.clients.listen((data) {
+      if (mounted) {
+        setState(() {
+          clients = List.from(data);
+        });
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -46,39 +62,31 @@ class _ClientPageState extends State<ClientPage> {
             child: SearchInput(
               hinteText: "Recherche client...",
               onSearched: (kword) async {
-                if (Platform.isAndroid) {
-                  await searchClient(kword!);
-                }
+                await searchClient(kword!);
               },
             ),
           ),
-          Obx(
-            () => dataController.clients.isEmpty && clients.isEmpty
-                ? const Expanded(child: EmptyState())
-                : Expanded(
-                    child: GridView.builder(
-                      shrinkWrap: true,
-                      padding: const EdgeInsets.all(10),
-                      physics: const BouncingScrollPhysics(),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount:
-                            (MediaQuery.of(context).size.width ~/ 250).toInt(),
-                        childAspectRatio: 4.2,
-                        crossAxisSpacing: 10.0,
-                        mainAxisSpacing: 10.0,
-                      ),
-                      itemCount: clients.isEmpty
-                          ? dataController.clients.length
-                          : clients.length,
-                      itemBuilder: (context, index) {
-                        var item = clients.isEmpty
-                            ? dataController.clients[index]
-                            : clients[index];
-                        return ClientCard(
-                          item: item,
-                        );
-                      },
+          Expanded(
+            child: clients.isEmpty
+                ? const EmptyState()
+                : GridView.builder(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.all(10),
+                    physics: const BouncingScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount:
+                          (MediaQuery.of(context).size.width ~/ 250).toInt(),
+                      childAspectRatio: 4.2,
+                      crossAxisSpacing: 10.0,
+                      mainAxisSpacing: 10.0,
                     ),
+                    itemCount: clients.length,
+                    itemBuilder: (context, index) {
+                      var item = clients[index];
+                      return ClientCard(
+                        item: item,
+                      );
+                    },
                   ),
           )
         ],
@@ -87,18 +95,17 @@ class _ClientPageState extends State<ClientPage> {
   }
 
   searchClient(String kword) async {
-    var db = await DBService.initDb();
-    try {
-      var allClients = await db.rawQuery(
-          "SELECT * FROM clients WHERE NOT client_state='deleted' AND client_nom LIKE '%$kword%'");
+    if (kword.isEmpty) {
       setState(() {
-        if (allClients.isNotEmpty) {
-          clients.clear();
-          for (var e in allClients) {
-            clients.add(Client.fromMap(e));
-          }
-        }
+        clients = List.from(dataController.clients);
       });
-    } catch (e) {}
+    } else {
+      setState(() {
+        clients = dataController.clients
+            .where((item) =>
+                item.clientNom!.toLowerCase().contains(kword.toLowerCase()))
+            .toList();
+      });
+    }
   }
 }

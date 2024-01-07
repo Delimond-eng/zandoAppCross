@@ -1,15 +1,16 @@
-import 'package:animate_do/animate_do.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:get/get.dart';
+import 'package:zandoprintapp/ui/widgets/submit_btn.dart';
+import '../../models/item.dart';
+import '../../services/api.dart';
 import '/services/utils.dart';
 import '/ui/widgets/dashline.dart';
 import '../../global/controllers.dart';
 import '../../models/client.dart';
 import '../../models/facture.dart';
 import '../../models/facture_detail.dart';
-import '../../services/db.service.dart';
 import '../widgets/custom_btn_icon.dart';
 import '/ui/modals/public/client_filter_modal.dart';
 import '../../config/utils.dart';
@@ -25,11 +26,11 @@ class FactureCreatePage extends StatefulWidget {
 
 class _FactureCreatePageState extends State<FactureCreatePage> {
   Client? selectedClient;
-  String? date;
-
   List<FactureDetail> items = <FactureDetail>[];
 
-  final itemLabel = TextEditingController();
+  Item? selectedItem;
+  Nature? selectedNature;
+  List<Nature> natures = [];
   final itemPrice = TextEditingController();
   final itemQty = TextEditingController();
   String itemDevise = "USD";
@@ -37,14 +38,10 @@ class _FactureCreatePageState extends State<FactureCreatePage> {
   double total = 0.0;
   double currentTot = 0.0;
 
+  bool submitLoading = false;
+
   @override
   void initState() {
-    Future.delayed(Duration.zero, () {
-      var currentDate = DateTime.now();
-      setState(() {
-        date = dateToString(currentDate);
-      });
-    });
     super.initState();
   }
 
@@ -60,26 +57,42 @@ class _FactureCreatePageState extends State<FactureCreatePage> {
   }
 
   void addFactureItems() {
-    if (itemLabel.text.isEmpty ||
-        itemPrice.text.isEmpty ||
-        itemQty.text.isEmpty) {
-      EasyLoading.showToast(
-          "Veuillez entrer toutes les informations requises !");
+    if (selectedItem == null) {
+      EasyLoading.showToast("Veuillez sélectionner un item !");
+      return;
+    }
+    if (selectedNature == null) {
+      EasyLoading.showToast("Veuillez sélectionner une nature !");
+      return;
+    }
+    if (itemQty.text.isEmpty) {
+      EasyLoading.showToast("Veuillez entrer la quantité du produit !");
       return;
     }
     try {
       var item = FactureDetail(
-        factureDetailLibelle: itemLabel.text,
+        factureDetailLibelle: selectedItem!.itemLibelle!,
+        factureDetailNature: selectedNature!.itemNatureLibelle,
         factureDetailPu: itemPrice.text.replaceAll(',', '.'),
         factureDetailQte: itemQty.text.replaceAll(',', '.'),
         factureDetailDevise: itemDevise,
       );
+      bool exists = items.contains(item);
+      if (exists) {
+        EasyLoading.showToast("Sélection existe déjà dans la liste !");
+        return;
+      }
       setState(() {
         items.add(item);
-        itemLabel.text = "";
+        refreshSum();
+        Item? i;
+        Nature? n;
+        itemDevise = "";
         itemPrice.text = "";
         itemQty.text = "";
-        refreshSum();
+        selectedItem = i;
+        selectedNature = n;
+        natures.clear();
       });
     } catch (e) {
       EasyLoading.showToast("Veuillez verifier les données entrées !");
@@ -89,47 +102,61 @@ class _FactureCreatePageState extends State<FactureCreatePage> {
 
   void createFacture() async {
     if (selectedClient == null) {
-      EasyLoading.showToast(
-        "Veuillez sélectionner un client !",
-      );
+      EasyLoading.showInfo(
+          "Veuillez créer des items pour la facture avant d'effectuer cette action !");
       return;
     }
-
-    var db = await DBService.initDb();
+    if (items.isEmpty) {
+      EasyLoading.showInfo(
+          "Veuillez créer des items pour la facture avant d'effectuer cette action !");
+      return;
+    }
+    double total = 0.0;
+    double currentTot = 0.0;
+    for (var e in items) {
+      if (e.factureDetailDevise == "CDF") {
+        currentTot = convertCdfToDollars(e.total);
+      } else {
+        currentTot = e.total;
+      }
+      total += currentTot;
+    }
     //create facture statment. //
     var facture = Facture(
       factureClientId: selectedClient!.clientId,
       factureDevise: "USD",
-      factureMontant: total.toString(),
-      factureTimestamp: date,
-      factureUserId: 1,
+      factureMontant: total.toStringAsExponential(2),
     );
-    var beContinued = await DBService.checkAvailability("factures");
-    if (beContinued) {
-      EasyLoading.showToast(
-          "Vous utiliser une version d'essai !, pour continuer cette appli doit être activée !");
-      return;
-    }
-    await db
-        .insert(
-      "factures",
-      facture.toMap(),
-    )
-        .then(
-      (factureId) async {
-        for (var item in items) {
-          item.factureId = factureId;
-          await db.insert(
-            "facture_details",
-            item.toMap(),
-          );
+    setState(() => submitLoading = true);
+    List<Map<String, dynamic>> itemsJsonList =
+        items.map((item) => item.toMap()).toList();
+    Api.request(url: 'facture.create', method: 'post', body: {
+      "facture_montant": facture.factureMontant,
+      "facture_devise": facture.factureDevise,
+      "client_id": int.parse(selectedClient!.clientId!.toString()),
+      "user_id": int.parse(authController.user.value.userId.toString()),
+      "facture_details": itemsJsonList,
+    }).then((res) {
+      setState(() => submitLoading = false);
+      if (res.containsKey('status')) {
+        if (res['status'] == "success") {
+          setState(() {
+            items.clear();
+            selectedClient = null;
+          });
+          EasyLoading.showSuccess("Facture créée avec succès !");
+          dataController.loadFilterFactures("pending");
+          dataController.loadFilterFactures("all");
         }
-        dataController.refreshDashboardCounts();
-        dataController.loadFacturesEnAttente();
-        dataController.loadFilterFactures("all");
-        Get.back();
-      },
-    );
+      } else {
+        EasyLoading.showInfo("Echec de traitement des informations !");
+        return;
+      }
+    }).catchError((onError) {
+      EasyLoading.showInfo(
+          "Une erreur est survenue lors de l'envoie des informations au serveur !");
+      setState(() => submitLoading = false);
+    });
   }
 
   @override
@@ -143,27 +170,6 @@ class _FactureCreatePageState extends State<FactureCreatePage> {
           children: [
             Row(
               children: [
-                Flexible(
-                  child: _actionBtn(
-                    hintText: "Date facturation...",
-                    value: date,
-                    onClear: () {
-                      setState(() {
-                        date = null;
-                      });
-                    },
-                    onTap: () async {
-                      var idate = await showDatePicked(context);
-                      setState(() {
-                        date = idate;
-                      });
-                    },
-                    icon: Icons.calendar_month_outlined,
-                  ),
-                ),
-                const SizedBox(
-                  width: 10,
-                ),
                 Flexible(
                   child: _actionBtn(
                       hintText: "Sélectionnez un client",
@@ -194,26 +200,52 @@ class _FactureCreatePageState extends State<FactureCreatePage> {
               children: [
                 Flexible(
                   child: CustomField(
-                    hintText: "Libelle item...",
+                    hintText: "--Sélectionnez un item--",
                     iconPath: "assets/icons/label.svg",
-                    controller: itemLabel,
+                    isDropdown: true,
+                    dropItems: dataController.items,
+                    selectedValue: selectedItem,
+                    onChangedDrop: (val) {
+                      Nature? nature;
+                      setState(() {
+                        selectedNature = nature;
+                        selectedItem = val;
+                        natures = List.from(selectedItem!.natures!);
+                      });
+                    },
                   ),
                 ),
                 const SizedBox(
-                  width: 10.0,
+                  width: 5.0,
+                ),
+                SizedBox(
+                  width: 200.0,
+                  child: CustomField(
+                    hintText: "--Nature--",
+                    iconPath: "assets/icons/price.svg",
+                    isDropdown: true,
+                    dropItems: natures,
+                    selectedValue: selectedNature,
+                    onChangedDrop: (val) {
+                      setState(() {
+                        selectedNature = val;
+                        itemPrice.text = selectedNature!.itemNaturePrix!;
+                        itemDevise = selectedNature!.itemNaturePrixDevise!;
+                      });
+                    },
+                  ),
+                ),
+                const SizedBox(
+                  width: 5.0,
                 ),
                 Flexible(
                   child: CustomField(
                     hintText: "Prix unitaire",
-                    isCurrency: true,
+                    readOnly: true,
                     inputType: TextInputType.number,
-                    onChangedCurrency: (val) {
-                      setState(() {
-                        itemDevise = val!;
-                      });
-                    },
                     iconPath: "assets/icons/money.svg",
                     controller: itemPrice,
+                    fixeDevise: itemDevise,
                   ),
                 ),
                 const SizedBox(
@@ -231,8 +263,8 @@ class _FactureCreatePageState extends State<FactureCreatePage> {
                   width: 10.0,
                 ),
                 Container(
-                  height: 50.0,
-                  width: 50.0,
+                  height: 40.0,
+                  width: 40.0,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(50),
                     color: primaryColor,
@@ -311,6 +343,17 @@ class _FactureCreatePageState extends State<FactureCreatePage> {
               ),
               Flexible(
                 child: Text(
+                  "Nature",
+                  style: TextStyle(
+                    color: defaultTextColor,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15.0,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+              Flexible(
+                child: Text(
                   "P.U",
                   style: TextStyle(
                     color: defaultTextColor,
@@ -340,6 +383,17 @@ class _FactureCreatePageState extends State<FactureCreatePage> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+              ),
+              Flexible(
+                child: Text(
+                  "",
+                  style: TextStyle(
+                    color: defaultTextColor,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15.0,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               )
             ],
           ),
@@ -349,94 +403,119 @@ class _FactureCreatePageState extends State<FactureCreatePage> {
           color: Colors.grey,
         ),
         for (var item in items) ...[
-          FadeInUp(
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 2.0),
-              height: 40.0,
-              width: MediaQuery.of(context).size.width,
-              decoration: BoxDecoration(
-                color: lightColor,
-                borderRadius: BorderRadius.circular(5.0),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        item.factureDetailLibelle!,
-                        style: const TextStyle(
-                          color: defaultTextColor,
-                          fontWeight: FontWeight.w500,
-                          fontSize: 14.0,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+          Container(
+            margin: const EdgeInsets.only(bottom: 2.0),
+            height: 40.0,
+            width: MediaQuery.of(context).size.width,
+            decoration: BoxDecoration(
+              color: lightColor,
+              borderRadius: BorderRadius.circular(5.0),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: Text(
+                      item.factureDetailLibelle!,
+                      style: const TextStyle(
+                        color: defaultTextColor,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 14.0,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    Flexible(
-                      child: RichText(
-                        text: TextSpan(
-                          children: [
-                            TextSpan(
-                              text: item.factureDetailPu!.padLeft(2, "0"),
-                              style: const TextStyle(
-                                color: defaultTextColor,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14.0,
-                              ),
-                            ),
-                            TextSpan(
-                              text: " ${item.factureDetailDevise}",
-                              style: const TextStyle(
-                                color: defaultTextColor,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 10.0,
-                              ),
-                            ),
-                          ],
-                        ),
+                  ),
+                  Flexible(
+                    child: Text(
+                      item.factureDetailNature!,
+                      style: const TextStyle(
+                        color: defaultTextColor,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 14.0,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    Flexible(
-                      child: Text(
-                        item.factureDetailQte.toString().padLeft(2, "0"),
-                        style: const TextStyle(
-                          color: defaultTextColor,
-                          fontWeight: FontWeight.w500,
-                          fontSize: 14.0,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                  ),
+                  Flexible(
+                    child: RichText(
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                            text: item.factureDetailPu!.padLeft(2, "0"),
+                            style: const TextStyle(
+                              color: defaultTextColor,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14.0,
+                            ),
+                          ),
+                          TextSpan(
+                            text: " ${item.factureDetailDevise}",
+                            style: const TextStyle(
+                              color: defaultTextColor,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 10.0,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    Flexible(
-                      child: RichText(
-                        text: TextSpan(
-                          children: [
-                            TextSpan(
-                              text:
-                                  item.total.toStringAsFixed(2).padLeft(2, "0"),
-                              style: const TextStyle(
-                                color: defaultTextColor,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14.0,
-                              ),
-                            ),
-                            TextSpan(
-                              text: " ${item.factureDetailDevise}",
-                              style: const TextStyle(
-                                color: defaultTextColor,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 10.0,
-                              ),
-                            ),
-                          ],
-                        ),
+                  ),
+                  Flexible(
+                    child: Text(
+                      item.factureDetailQte.toString().padLeft(2, "0"),
+                      style: const TextStyle(
+                        color: defaultTextColor,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 14.0,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                  Flexible(
+                    child: RichText(
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                            text: item.total.toStringAsFixed(2).padLeft(2, "0"),
+                            style: const TextStyle(
+                              color: defaultTextColor,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14.0,
+                            ),
+                          ),
+                          TextSpan(
+                            text: " ${item.factureDetailDevise}",
+                            style: const TextStyle(
+                              color: defaultTextColor,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 10.0,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Flexible(
+                    child: IconButton(
+                      tooltip: "Retirer l'item !",
+                      onPressed: () {
+                        int index = items.indexOf(item);
+                        setState(() {
+                          items.removeAt(index);
+                          refreshSum();
+                        });
+                      },
+                      icon: const Icon(
+                        Icons.close,
+                      ),
+                      iconSize: 15.0,
+                      color: Colors.red,
+                    ),
+                  )
+                ],
               ),
             ),
           ),
@@ -446,61 +525,51 @@ class _FactureCreatePageState extends State<FactureCreatePage> {
             space: 2,
           )
         ],
-        FadeInUp(
-          child: Row(
-            children: [
-              Flexible(
-                child: SizedBox(
-                  height: 82.0,
-                  width: MediaQuery.of(context).size.width,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                    ),
-                    onPressed: () {
-                      createFacture();
-                    },
-                    icon: const Icon(
-                      Icons.check,
-                      color: lightColor,
-                    ),
-                    label: const Text(
-                      "Valider",
-                      style:
-                          TextStyle(fontFamily: defaultFont, color: lightColor),
+        Row(
+          children: [
+            Flexible(
+              child: SizedBox(
+                height: 82.0,
+                width: MediaQuery.of(context).size.width,
+                child: SubmitButton(
+                  loading: submitLoading,
+                  color: Colors.green,
+                  onPressed: () {
+                    createFacture();
+                  },
+                  icon: Icons.add,
+                  label: "Valider & créer facture",
+                ),
+              ),
+            ),
+            const SizedBox(
+              width: 10,
+            ),
+            Flexible(
+              child: Column(
+                children: [
+                  Align(
+                    alignment: Alignment.bottomRight,
+                    child: TotItem(
+                      title: "Net à payer",
+                      value: total.toStringAsFixed(2),
+                      currency: "USD",
+                      color: defaultTextColor,
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(
-                width: 10,
-              ),
-              Flexible(
-                child: Column(
-                  children: [
-                    Align(
-                      alignment: Alignment.bottomRight,
-                      child: TotItem(
-                        title: "Net à payer",
-                        value: total.toStringAsFixed(2),
-                        currency: "USD",
-                        color: defaultTextColor,
-                      ),
+                  Align(
+                    alignment: Alignment.bottomRight,
+                    child: TotItem(
+                      title: "Equivalent en CDF",
+                      value: convertDollarsToCdf(total).toStringAsFixed(2),
+                      currency: "CDF",
+                      color: defaultTextColor,
                     ),
-                    Align(
-                      alignment: Alignment.bottomRight,
-                      child: TotItem(
-                        title: "Equivalent en CDF",
-                        value: convertDollarsToCdf(total).toStringAsFixed(2),
-                        currency: "CDF",
-                        color: defaultTextColor,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            ],
-          ),
+                  ),
+                ],
+              ),
+            )
+          ],
         )
       ],
     );
@@ -538,7 +607,7 @@ class _FactureCreatePageState extends State<FactureCreatePage> {
                 Icon(
                   icon,
                   size: 16,
-                  color: Colors.grey,
+                  color: primaryColor,
                 ),
                 const SizedBox(
                   width: 5,
@@ -568,6 +637,7 @@ class _FactureCreatePageState extends State<FactureCreatePage> {
                     style: const TextStyle(
                       color: Colors.grey,
                       fontFamily: defaultFont,
+                      fontWeight: FontWeight.w600,
                     ),
                   )
                 ]
@@ -596,13 +666,14 @@ class TotItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 2.0),
       height: 40.0,
       width: MediaQuery.of(context).size.width / 2,
       decoration: BoxDecoration(
         color: lightColor,
-        borderRadius: BorderRadius.circular(5.0),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border(
+          top: BorderSide(color: Colors.grey.shade200),
+          bottom: BorderSide(color: Colors.grey.shade200),
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8.0),

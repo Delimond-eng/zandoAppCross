@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:zandoprintapp/ui/pages/config_page.dart';
 import '/ui/pages/stock_page.dart';
 import '../../global/controllers.dart';
 import '/ui/pages/inventory_page.dart';
@@ -68,7 +69,7 @@ class MenuItem extends StatelessWidget {
                 );
                 break;
               case "Trésoreries":
-                dataController.loadAllComptes();
+                /* dataController.loadAllComptes(); */
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -86,7 +87,7 @@ class MenuItem extends StatelessWidget {
                 );
                 break;
               case "Utilisateurs":
-                dataController.loadUsers();
+                /* dataController.loadUsers(); */
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -95,11 +96,20 @@ class MenuItem extends StatelessWidget {
                 );
                 break;
               case "Stockage":
-                dataController.loadStockData(0);
+                dataController.loadStockData();
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => const StockHomePage(),
+                  ),
+                );
+                break;
+              case "Configurations":
+                dataController.refreshConfigs();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ConfigPage(),
                   ),
                 );
                 break;

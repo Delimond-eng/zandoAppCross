@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:get/get.dart';
+import '../../services/api.dart';
 import '../../services/db.service.dart';
 import '/config/utils.dart';
 import '/global/controllers.dart';
@@ -140,52 +142,13 @@ class _ComptePageState extends State<ComptePage> {
                                         CrossAxisAlignment.start,
                                     mainAxisAlignment: MainAxisAlignment.end,
                                     children: [
-                                      TextButton(
-                                        style: TextButton.styleFrom(
-                                          backgroundColor:
-                                              compte.compteStatus == "actif"
-                                                  ? Colors.red
-                                                  : Colors.green,
-                                          elevation: 2,
-                                          padding: const EdgeInsets.all(8.0),
+                                      Flexible(
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.end,
+                                          children: [enableBtn(compte)],
                                         ),
-                                        child: Text(
-                                          (compte.compteStatus == "actif")
-                                              ? "Desactiver"
-                                              : "Activer",
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w400,
-                                            color: Colors.white,
-                                            fontFamily: defaultFont,
-                                            fontSize: 12.0,
-                                          ),
-                                        ),
-                                        onPressed: () async {
-                                          enableOrDisableAccount(compte);
-                                        },
                                       ),
-                                      const SizedBox(
-                                        height: 2,
-                                      ),
-                                      /* TextButton(
-                                        style: TextButton.styleFrom(
-                                          backgroundColor: Colors.blue,
-                                          elevation: 2,
-                                          padding: const EdgeInsets.all(8.0),
-                                        ),
-                                        child: const Text(
-                                          "Voir opérations",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w400,
-                                            color: Colors.white,
-                                            fontFamily: defaultFont,
-                                            fontSize: 12.0,
-                                          ),
-                                        ),
-                                        onPressed: () async {
-                                          enableOrDisableAccount(compte);
-                                        },
-                                      ), */
                                     ],
                                   ),
                                 ],
@@ -202,18 +165,51 @@ class _ComptePageState extends State<ComptePage> {
     );
   }
 
-  enableOrDisableAccount(Compte compte) async {
-    var db = await DBService.initDb();
-    Map<String, dynamic> map;
-    if (compte.compteStatus == "actif") {
-      map = {"compte_status": "inactif"};
-    } else {
-      map = {"compte_status": "actif"};
-    }
-    db.update("comptes", map,
-        where: "compte_id=?", whereArgs: [compte.compteId]).then((id) {
-      dataController.loadAllComptes();
-      dataController.loadActivatedComptes();
+  Widget enableBtn(Compte compte) {
+    bool loading = false;
+    return StatefulBuilder(builder: (context, setter) {
+      return SizedBox(
+        height: 35.0,
+        child: TextButton(
+          style: TextButton.styleFrom(
+            backgroundColor:
+                compte.compteStatus == "actif" ? Colors.red : Colors.green,
+            disabledBackgroundColor: compte.compteStatus == "actif"
+                ? Colors.red[200]
+                : Colors.green[200],
+            elevation: 2,
+            padding: const EdgeInsets.all(5.0),
+          ),
+          onPressed: loading == true
+              ? null
+              : () async {
+                  setter(() => loading = true);
+                  Api.request(url: 'data.disable', method: 'post', body: {
+                    "table": "comptes",
+                    "id": int.parse(compte.compteId.toString()),
+                    "state": "compte_status",
+                    "state_val":
+                        compte.compteStatus == "actif" ? "inactif" : "actif"
+                  }).then((value) {
+                    setter(() => loading = true);
+                    dataController.refreshConfigs();
+                  });
+                },
+          child: loading == true
+              ? const SpinKitThreeBounce(
+                  color: Colors.white,
+                  size: 12.0,
+                )
+              : Text(
+                  (compte.compteStatus == "actif") ? "Désactiver" : "Activer",
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
+                    fontSize: 10.0,
+                  ),
+                ),
+        ),
+      );
     });
   }
 }

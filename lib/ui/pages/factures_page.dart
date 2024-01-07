@@ -1,8 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
-import 'package:zandoprintapp/services/db.service.dart';
 import '../../models/facture.dart';
 import '/global/controllers.dart';
 import '/ui/widgets/empty_state.dart';
@@ -23,6 +23,26 @@ class FacturesPage extends StatefulWidget {
 class _FacturesPageState extends State<FacturesPage> {
   String filter = "Vue globale";
   List<Facture> factures = [];
+
+  @override
+  void initState() {
+    super.initState();
+    SchedulerBinding.instance.addPostFrameCallback((_) async {
+      dataController.dataLoading.value = true;
+      dataController.loadFilterFactures("all").then((res) {
+        dataController.dataLoading.value = false;
+      });
+    });
+
+    dataController.filteredFactures.listen((data) {
+      if (mounted) {
+        setState(() {
+          factures = List.from(data);
+        });
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -155,35 +175,28 @@ class _FacturesPageState extends State<FacturesPage> {
                 ],
               ),
             ),
-            Obx(
-              () => Expanded(
-                child: dataController.filteredFactures.isEmpty
-                    ? const EmptyState()
-                    : GridView.builder(
-                        shrinkWrap: true,
-                        padding: const EdgeInsets.all(10),
-                        physics: const BouncingScrollPhysics(),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount:
-                              (MediaQuery.of(context).size.width ~/ 300)
-                                  .toInt(),
-                          childAspectRatio: 2.2,
-                          crossAxisSpacing: 15.0,
-                          mainAxisSpacing: 15.0,
-                        ),
-                        itemCount: factures.isEmpty
-                            ? dataController.filteredFactures.length
-                            : factures.length,
-                        itemBuilder: (context, index) {
-                          var item = factures.isEmpty
-                              ? dataController.filteredFactures[index]
-                              : factures[index];
-                          return FactureCard(
-                            item: item,
-                          );
-                        },
+            Expanded(
+              child: factures.isEmpty
+                  ? const EmptyState()
+                  : GridView.builder(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.all(10),
+                      physics: const BouncingScrollPhysics(),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount:
+                            (MediaQuery.of(context).size.width ~/ 300).toInt(),
+                        childAspectRatio: 2.2,
+                        crossAxisSpacing: 15.0,
+                        mainAxisSpacing: 15.0,
                       ),
-              ),
+                      itemCount: factures.length,
+                      itemBuilder: (context, index) {
+                        var item = factures[index];
+                        return FactureCard(
+                          item: item,
+                        );
+                      },
+                    ),
             )
           ],
         ),
@@ -192,21 +205,18 @@ class _FacturesPageState extends State<FacturesPage> {
   }
 
   void onSearch(String? value) async {
-    var db = await DBService.initDb();
-    var query = await db.rawQuery(
-        "SELECT * FROM factures INNER JOIN clients ON factures.facture_client_id = clients.client_id WHERE  NOT factures.facture_state='deleted' AND clients.client_nom LIKE '%$value%' ORDER BY factures.facture_id DESC");
-    setState(() {
-      if (query.isNotEmpty) {
-        factures.clear();
-        for (var e in query) {
-          factures.add(Facture.fromMap(e));
-        }
-      }
-    });
-
-    for (var data in query) {
-      dataController.filteredFactures.clear();
-      dataController.filteredFactures.add(Facture.fromMap(data));
+    if (value!.isEmpty) {
+      setState(() {
+        factures = List.from(dataController.filteredFactures);
+      });
+    } else {
+      setState(() {
+        factures = dataController.filteredFactures
+            .where((item) => item.client!.clientNom!
+                .toLowerCase()
+                .contains(value.toLowerCase()))
+            .toList();
+      });
     }
   }
 }

@@ -1,11 +1,5 @@
-import 'dart:convert';
-
-import '/services/db.service.dart';
-
-import '../models/invoice.dart';
-
 class DataManager {
-  static Future<Invoice> getFactureInvoice({int? factureId}) async {
+  /* static Future<Invoice> getFactureInvoice({int? factureId}) async {
     var db = await DBService.initDb();
     var jsonResponse;
     try {
@@ -34,5 +28,5 @@ class DataManager {
       // ignore: null_check_always_fails
       return null!;
     }
-  }
+  } */
 }

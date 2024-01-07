@@ -1,8 +1,10 @@
 import 'package:animate_do/animate_do.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get_state_manager/get_state_manager.dart';
+import '../../services/api.dart';
 import '/global/controllers.dart';
 import '/services/db.service.dart';
 import '/ui/modals/public/create_user.dart';
@@ -18,6 +20,7 @@ class UsersPage extends StatefulWidget {
 }
 
 class _UsersPageState extends State<UsersPage> {
+  String changeLoading = '';
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -53,7 +56,7 @@ class _UsersPageState extends State<UsersPage> {
                         padding: const EdgeInsets.all(8.0),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Row(
                               children: [
@@ -97,7 +100,62 @@ class _UsersPageState extends State<UsersPage> {
                                 )
                               ],
                             ),
-                            Container(
+                            if (changeLoading == usr.userId.toString()) ...[
+                              const SizedBox(
+                                height: 18.0,
+                                width: 18.0,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 3.0,
+                                ),
+                              ),
+                            ] else ...[
+                              Switch(
+                                value: usr.userAccess == 'allowed',
+                                onChanged: (value) {
+                                  setState(() {
+                                    changeLoading = usr.userId.toString();
+                                  });
+                                  Api.request(
+                                    url: 'data.disable',
+                                    method: 'post',
+                                    body: {
+                                      "table": "users",
+                                      "id": int.parse(usr.userId.toString()),
+                                      "state": "access",
+                                      "state_val": usr.userAccess == "allowed"
+                                          ? "denied"
+                                          : "allowed"
+                                    },
+                                  ).then((value) async {
+                                    await dataController.refreshConfigs();
+                                    setState(() {
+                                      changeLoading = '';
+                                    });
+                                    if (usr.userAccess == "allowed") {
+                                      EasyLoading.showToast(
+                                          'utilisateur désactivé !');
+                                    } else {
+                                      EasyLoading.showToast(
+                                          'utilisateur activé !');
+                                    }
+                                  }).catchError((err) {
+                                    setState(() {
+                                      changeLoading = '';
+                                    });
+                                  });
+                                },
+                                activeColor: Colors
+                                    .green, // Change the active color of the switch
+                                activeTrackColor: Colors
+                                    .lightGreen, // Change the track color when the switch is on
+                                inactiveThumbColor: Colors
+                                    .grey, // Change the color of the switch when it is off
+                                inactiveTrackColor: Colors.grey.withOpacity(
+                                    0.5), // Change the track color when the switch is off
+                              ),
+                            ]
+
+                            /* Container(
                               height: 20.0,
                               width: 20.0,
                               decoration: BoxDecoration(
@@ -116,18 +174,18 @@ class _UsersPageState extends State<UsersPage> {
                                 child: InkWell(
                                   borderRadius: BorderRadius.circular(20.0),
                                   onTap: () async {
-                                    var db = await DBService.initDb();
+                                    /* var db = await DBService.initDb(); */
                                     String access = usr.userAccess == 'allowed'
                                         ? 'denied'
                                         : 'allowed';
-                                    db
+                                    /* db
                                         .update(
                                             "users", {"user_access": access},
                                             where: "user_id=?",
                                             whereArgs: [usr.userId])
                                         .then((value) {
                                       dataController.loadUsers();
-                                    });
+                                    }); */
                                   },
                                   child: Center(
                                     child: Icon(
@@ -138,7 +196,7 @@ class _UsersPageState extends State<UsersPage> {
                                   ),
                                 ),
                               ),
-                            )
+                            ) */
                           ],
                         ),
                       ),

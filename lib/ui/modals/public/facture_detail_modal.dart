@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:zandoprintapp/services/db.service.dart';
 import 'package:zandoprintapp/ui/widgets/dashline.dart';
 import '../../../models/facture.dart';
 
@@ -10,8 +9,6 @@ import '../../pages/facture_create_page.dart';
 import '../util.dart';
 
 Future<void> showFactureDetails(context, {Facture? facture}) async {
-  var items = await getItems(facture!.factureId!);
-  var pay = await countPay(facture.factureId!);
   showCustomModal(
     context,
     width: MediaQuery.of(context).size.width / 1.30,
@@ -54,7 +51,15 @@ Future<void> showFactureDetails(context, {Facture? facture}) async {
                             const SizedBox(
                               width: 5.0,
                             ),
-                            Text(facture.factureDateCreate!),
+                            Text(
+                              facture!.factureDateCreate!,
+                              style: const TextStyle(
+                                fontFamily: 'Poppins',
+                                color: Colors.indigo,
+                                fontSize: 10.0,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(
@@ -74,16 +79,29 @@ Future<void> showFactureDetails(context, {Facture? facture}) async {
                       mainAxisAlignment: MainAxisAlignment.start,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text("Client"),
+                        const Text(
+                          "Client",
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 12.0,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.indigo,
+                          ),
+                        ),
                         RichText(
                           text: TextSpan(
-                            style: const TextStyle(color: Colors.black),
+                            style: const TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 12.0,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black,
+                            ),
                             children: [
                               const TextSpan(text: "Nom : "),
                               TextSpan(
                                 text: facture.client!.clientNom!,
                                 style: const TextStyle(
-                                  fontSize: 15.0,
+                                  fontSize: 12.0,
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
@@ -95,13 +113,18 @@ Future<void> showFactureDetails(context, {Facture? facture}) async {
                         ),
                         RichText(
                           text: TextSpan(
-                            style: const TextStyle(color: Colors.black),
+                            style: const TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 12.0,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black,
+                            ),
                             children: [
                               const TextSpan(text: "Contact : "),
                               TextSpan(
                                 text: facture.client!.clientTel!,
                                 style: const TextStyle(
-                                  fontSize: 15.0,
+                                  fontSize: 12.0,
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
@@ -119,8 +142,12 @@ Future<void> showFactureDetails(context, {Facture? facture}) async {
                   color: Colors.grey,
                   space: 5.0,
                 ),
-                factureDetails(context,
-                    items: items, facture: facture, pay: pay)
+                factureDetails(
+                  context,
+                  items: facture.details,
+                  facture: facture,
+                  pay: facture.totPay,
+                )
               ],
             ),
           )
@@ -142,6 +169,17 @@ Widget factureDetails(context,
             Flexible(
               child: Text(
                 "Libellé",
+                style: TextStyle(
+                  color: defaultTextColor,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15.0,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            Flexible(
+              child: Text(
+                "Nature",
                 style: TextStyle(
                   color: defaultTextColor,
                   fontWeight: FontWeight.w700,
@@ -196,8 +234,9 @@ Widget factureDetails(context,
           width: MediaQuery.of(context).size.width,
           decoration: BoxDecoration(
             color: lightColor,
-            borderRadius: BorderRadius.circular(5.0),
-            border: Border.all(color: Colors.grey.shade200),
+            border: Border(
+              bottom: BorderSide(color: Colors.grey.shade200),
+            ),
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -207,6 +246,17 @@ Widget factureDetails(context,
                 Flexible(
                   child: Text(
                     item.factureDetailLibelle!,
+                    style: const TextStyle(
+                      color: defaultTextColor,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14.0,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                Flexible(
+                  child: Text(
+                    item.factureDetailNature!,
                     style: const TextStyle(
                       color: defaultTextColor,
                       fontWeight: FontWeight.w500,
@@ -330,27 +380,4 @@ Widget factureDetails(context,
       )
     ],
   );
-}
-
-Future<List<FactureDetail>> getItems(int id) async {
-  List<FactureDetail> items = [];
-  var db = await DBService.initDb();
-  var query = await db.rawQuery(
-      "SELECT * FROM facture_details WHERE facture_id=$id AND NOT facture_detail_state='deleted'");
-  for (var e in query) {
-    items.add(FactureDetail.fromMap(e));
-  }
-
-  return items;
-}
-
-Future<double> countPay(int factureId) async {
-  var db = await DBService.initDb();
-  var query = await db.rawQuery(
-    "SELECT SUM(operation_montant) AS lastAmount FROM operations INNER JOIN factures ON operations.operation_facture_id = factures.facture_id WHERE operations.operation_facture_id = $factureId AND NOT operations.operation_state ='deleted'",
-  );
-  double count = query.first['lastAmount'] != null
-      ? double.parse(query.first['lastAmount'].toString())
-      : 0;
-  return count;
 }

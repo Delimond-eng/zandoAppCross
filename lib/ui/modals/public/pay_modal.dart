@@ -4,11 +4,11 @@ import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:get/get.dart';
-import '/services/db.service.dart';
+import 'package:zandoprintapp/ui/widgets/submit_btn.dart';
+import '../../../services/api.dart';
 import '/services/utils.dart';
 import '/ui/widgets/action_btn.dart';
 import '../../../models/facture.dart';
-import '../../../models/operation.dart';
 import '../../../reports/report.dart';
 import '/global/controllers.dart';
 import '/models/compte.dart';
@@ -19,19 +19,11 @@ import '../util.dart';
 
 Future<void> showPayModal(context, {required Facture facture}) async {
   final textMontant = TextEditingController();
-  String? datePaie = dateToString(DateTime.now());
   Compte? selectCompte;
   String? modePaie;
   String devise = "USD";
-
-  var lastPayment = await Report.checkLastPay(facture.factureId);
-  if (lastPayment != null) {
-    var currentAmount = double.parse(facture.factureMontant!) -
-        double.parse(lastPayment.toString());
-    textMontant.text = currentAmount.toStringAsFixed(2);
-  } else {
-    textMontant.text = facture.factureMontant!;
-  }
+  textMontant.text = facture.restToPay.toString();
+  bool isLoading = false;
   showCustomModal(
     context,
     width: MediaQuery.of(context).size.width / 1.5,
@@ -57,27 +49,6 @@ Future<void> showPayModal(context, {required Facture facture}) async {
             crossAxisAlignment: CrossAxisAlignment.end,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              StatefulBuilder(builder: (context, setter) {
-                return ActionBtn(
-                  hintText: "Date paiement",
-                  icon: Icons.calendar_month,
-                  onClear: () {
-                    setter(() {
-                      datePaie = null;
-                    });
-                  },
-                  onTap: () async {
-                    var iDate = await showDatePicked(context);
-                    setter(() {
-                      datePaie = iDate;
-                    });
-                  },
-                  value: datePaie,
-                );
-              }),
-              const SizedBox(
-                height: 10.0,
-              ),
               CustomField(
                 hintText: "Montant paiement",
                 iconPath: "assets/icons/money.svg",
@@ -128,132 +99,84 @@ Future<void> showPayModal(context, {required Facture facture}) async {
               const SizedBox(
                 height: 10.0,
               ),
-              SizedBox(
-                height: 50.0,
-                child: ZoomIn(
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      /* check empty fields */
-                      if (textMontant.text.isEmpty) {
-                        EasyLoading.showToast(
-                            "Vous devez entrer le montant du paiement !");
-                        return;
-                      }
-                      if (devise == null) {
-                        EasyLoading.showToast(
-                            "Vous devez sélectionner une devise !");
-                        return;
-                      }
-                      if (modePaie == null) {
-                        EasyLoading.showToast(
-                            "Vous devez sélectionner un mode de paiement !");
-                        return;
-                      }
-                      if (selectCompte == null) {
-                        EasyLoading.showToast(
-                            "Veuillez sélectionner le compte pour percevoir ce paiement !");
-                        return;
-                      }
-                      /* end check empty fields */
-
-                      /* check last pay */
-                      var lastPay =
-                          await Report.checkLastPay(facture.factureId);
-                      /* end check last pay */
-
-                      var convertedInputAmount = double.parse(textMontant.text);
-                      if (devise == "CDF") {
-                        convertedInputAmount = double.parse(
-                          convertCdfToDollars(convertedInputAmount)
-                              .toStringAsFixed(2),
-                        );
-                      }
-                      double checkAmount = 0;
-                      double factureAmount =
-                          double.parse(facture.factureMontant!);
-                      if (lastPay == null) {
-                        checkAmount = factureAmount - convertedInputAmount;
-                        if (checkAmount.isNegative) {
+              StatefulBuilder(builder: (context, setter) {
+                return SizedBox(
+                  height: 50.0,
+                  width: 200.0,
+                  child: ZoomIn(
+                    child: SubmitButton(
+                      loading: isLoading,
+                      onPressed: () async {
+                        /* check empty fields */
+                        if (textMontant.text.isEmpty) {
                           EasyLoading.showToast(
-                            "Le montant de paiement saisi dépasse le frais de la facture sélectionnée !",
-                            duration: const Duration(milliseconds: 1000),
-                          );
+                              "Vous devez entrer le montant du paiement !");
                           return;
                         }
-                      } else {
-                        double c =
-                            factureAmount - double.parse(lastPay.toString());
-                        checkAmount = c - convertedInputAmount;
-                        if (c == 0) {
+                        if (devise == null) {
                           EasyLoading.showToast(
-                            "Cette facture a été déjà payé à la totalité !",
-                            duration: const Duration(milliseconds: 1000),
-                          );
+                              "Vous devez sélectionner une devise !");
+                          return;
+                        }
+                        if (modePaie == null) {
+                          EasyLoading.showToast(
+                              "Vous devez sélectionner un mode de paiement !");
+                          return;
+                        }
+                        if (selectCompte == null) {
+                          EasyLoading.showToast(
+                              "Veuillez sélectionner le compte pour percevoir ce paiement !");
                           return;
                         }
 
-                        if (checkAmount.isNegative) {
-                          EasyLoading.showToast(
-                            "Le montant de paiement saisi dépasse le frais restant de la facture sélectionnée !",
-                            duration: const Duration(milliseconds: 1000),
+                        var convertedInputAmount =
+                            double.parse(textMontant.text);
+                        if (devise == "CDF") {
+                          convertedInputAmount = double.parse(
+                            convertCdfToDollars(convertedInputAmount)
+                                .toStringAsFixed(2),
                           );
-                          return;
                         }
-                      }
-                      /**Creating payment  statment**/
-                      var data = Operations(
-                        operationCompteId: selectCompte!.compteId,
-                        operationDevise: devise,
-                        operationFactureId: facture.factureId,
-                        operationLibelle: "Paiement facture",
-                        operationMontant: convertedInputAmount,
-                        operationType: "entrée",
-                        operationUserId: authController.user.value.userId ?? 1,
-                        operationMode: modePaie,
-                        operationTimestamp: datePaie,
-                      );
-                      /* Insert data from database */
-                      var db = await DBService.initDb();
-                      await db
-                          .insert("operations", data.toMap())
-                          .then((resId) async {
-                        if (checkAmount == 0) {
-                          /* check if payment is all ready */
-                          await db.update(
-                            "factures",
-                            {"facture_statut": "paie"},
-                            where: "facture_id= ?",
-                            whereArgs: [facture.factureId],
-                          );
-                          /* end statment */
-                        }
-                        EasyLoading.showSuccess(
-                          "Paiement effectué avec succès !",
-                        );
-                        dataController.loadFacturesEnAttente();
-                        dataController.countDaySum();
-                        dataController.refreshDatas();
-                        dataController.loadFilterFactures('all');
-                        Get.back();
-                      });
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryColor,
-                      padding: const EdgeInsets.all(16.0),
-                      elevation: 10.0,
-                      textStyle: const TextStyle(
-                        fontFamily: defaultFont,
-                        color: lightColor,
-                        fontSize: 14.0,
-                      ),
-                    ),
-                    icon: const Icon(Icons.check),
-                    label: const Text(
-                      "Valider le paiement",
+                        setter(() => isLoading = true);
+
+                        Api.request(url: 'facture.pay', method: 'post', body: {
+                          "facture_montant":
+                              double.parse(facture.factureMontant.toString()),
+                          "operation_montant": convertedInputAmount,
+                          "operation_devise": devise,
+                          "operation_mode": modePaie,
+                          "facture_id": int.parse(facture.factureId.toString()),
+                          "user_id": int.parse(
+                              authController.user.value.userId.toString()),
+                          "compte_id":
+                              int.parse(selectCompte!.compteId.toString())
+                        }).then((res) {
+                          setter(() => isLoading = false);
+                          if (res.containsKey('errors')) {
+                            EasyLoading.showInfo(res['errors'].toString());
+                            return;
+                          }
+                          if (res.containsKey('status')) {
+                            if (res['status'] == 'success') {
+                              Get.back();
+                              EasyLoading.showSuccess(
+                                  "Paiement effectué avec succès !");
+                              dataController.loadFacturesEnAttente();
+                              dataController.refreshDashboardCounts();
+                              dataController.refreshDayCompteSum();
+                              dataController.countDaySum();
+                              dataController.loadFilterFactures("all");
+                            }
+                          }
+                        });
+                      },
+                      color: Colors.green,
+                      icon: Icons.check,
+                      label: "Valider le paiement",
                     ),
                   ),
-                ),
-              )
+                );
+              })
             ],
           ),
         )

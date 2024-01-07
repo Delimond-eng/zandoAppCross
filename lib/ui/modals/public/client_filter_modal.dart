@@ -16,7 +16,7 @@ import 'create_client.dart';
 Future<void> showClientFilterModal(context,
     {required Function(Client client) onSelected}) async {
   await dataController.loadClients();
-  List<Client> clients = [];
+  List<Client> filteredClients = List.from(dataController.clients);
   showCustomModal(
     context,
     width: MediaQuery.of(context).size.width / 1.5,
@@ -36,18 +36,21 @@ Future<void> showClientFilterModal(context,
                     Flexible(
                       child: SearchInput(
                         hinteText: "Rechercher client...",
-                        onSearched: (val) async {
-                          var db = await DBService.initDb();
-                          try {
-                            var allClients = await db.rawQuery(
-                                "SELECT * FROM clients WHERE NOT client_state='deleted' AND client_nom LIKE '%$val%'");
+                        onSearched: (value) async {
+                          if (value!.isEmpty) {
                             setter(() {
-                              clients.clear();
-                              for (var e in allClients) {
-                                clients.add(Client.fromMap(e));
-                              }
+                              filteredClients =
+                                  List.from(dataController.clients);
                             });
-                          } catch (e) {}
+                          } else {
+                            setter(() {
+                              filteredClients = dataController.clients
+                                  .where((item) => item.clientNom!
+                                      .toLowerCase()
+                                      .contains(value.toLowerCase()))
+                                  .toList();
+                            });
+                          }
                         },
                       ),
                     ),
@@ -80,24 +83,18 @@ Future<void> showClientFilterModal(context,
                     )
                   ],
                 ),
-                Obx(
-                  () => dataController.clients.isEmpty
-                      ? const EmptyState()
-                      : ListView.builder(
-                          shrinkWrap: true,
-                          itemCount: clients.isEmpty
-                              ? dataController.clients.length
-                              : clients.length,
-                          itemBuilder: (context, index) {
-                            return ClientFilterCard(
-                              client: clients.isEmpty
-                                  ? dataController.clients[index]
-                                  : clients[index],
-                              onSelected: onSelected,
-                            );
-                          },
-                        ),
-                )
+                filteredClients.isEmpty
+                    ? const EmptyState()
+                    : ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: filteredClients.length,
+                        itemBuilder: (context, index) {
+                          return ClientFilterCard(
+                            client: filteredClients[index],
+                            onSelected: onSelected,
+                          );
+                        },
+                      )
               ],
             ),
           )
@@ -105,17 +102,6 @@ Future<void> showClientFilterModal(context,
       );
     }),
   );
-}
-
-Future<List<Client>> getClients() async {
-  final db = await DBService.initDb();
-  var json = await db
-      .rawQuery("SELECT * FROM clients WHERE NOT client_state='deleted'");
-  List<Client> clients = <Client>[];
-  for (var e in json) {
-    clients.add(Client.fromMap(e));
-  }
-  return clients;
 }
 
 class ClientFilterCard extends StatelessWidget {

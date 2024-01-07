@@ -2,16 +2,17 @@
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import '../../global/controllers.dart';
 import '../../models/stock.dart';
-import '../../services/db.service.dart';
+import '../../services/api.dart';
 import '../modals/public/create_stock_modal.dart';
 import '../modals/public/stock_sorties_details_modal.dart';
 import '../modals/util.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/search_input.dart';
 import '/ui/components/custom_appbar.dart';
 
 import '../../config/utils.dart';
@@ -28,6 +29,7 @@ class StockHomePage extends StatefulWidget {
 class _StockHomePageState extends State<StockHomePage> {
   ScrollController controller = ScrollController();
   bool floatingBtnVisible = true;
+  List<Produit> stocks = [];
   @override
   void dispose() {
     super.dispose();
@@ -37,7 +39,12 @@ class _StockHomePageState extends State<StockHomePage> {
   @override
   void initState() {
     super.initState();
-    dataController.loadStockData(1);
+    SchedulerBinding.instance.addPostFrameCallback((_) async {
+      dataController.dataLoading.value = true;
+      dataController.loadStockData().then((res) {
+        dataController.dataLoading.value = false;
+      });
+    });
     controller.addListener(() {
       if (controller.position.pixels == controller.position.maxScrollExtent) {
         setState(() {
@@ -55,6 +62,13 @@ class _StockHomePageState extends State<StockHomePage> {
         }
       }
     });
+    dataController.stocks.listen((data) {
+      if (mounted) {
+        setState(() {
+          stocks = List.from(data);
+        });
+      }
+    });
   }
 
   @override
@@ -64,8 +78,40 @@ class _StockHomePageState extends State<StockHomePage> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Padding(
+            padding: const EdgeInsets.all(10.0),
+            child: SearchInput(
+              hinteText: "Recherche produit...",
+              onSearched: (value) {
+                if (value!.isEmpty) {
+                  setState(() {
+                    stocks = List.from(dataController.stocks);
+                  });
+                } else {
+                  setState(() {
+                    stocks = dataController.stocks
+                        .where((item) => item.produitLibelle!
+                            .toLowerCase()
+                            .contains(value.toLowerCase()))
+                        .toList();
+                  });
+                }
+              },
+            ),
+          ),
           Expanded(
-            child: _globalView(),
+            child: stocks.isEmpty
+                ? const EmptyState()
+                : ListView.builder(
+                    controller: controller,
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.all(10.0),
+                    itemCount: stocks.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      var data = stocks[index];
+                      return StockHomeCard(data: data);
+                    },
+                  ),
           )
         ],
       ),
@@ -73,12 +119,11 @@ class _StockHomePageState extends State<StockHomePage> {
           ? Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                FloatingActionButton.extended(
-                  heroTag: "1",
-                  backgroundColor: primaryColor,
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4.0)),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.all(18.0),
+                    backgroundColor: Colors.green.shade700,
+                  ),
                   onPressed: () async {
                     showCreateStockModal(context);
                   },
@@ -95,45 +140,25 @@ class _StockHomePageState extends State<StockHomePage> {
                 const SizedBox(
                   width: 5.0,
                 ),
-                FloatingActionButton.extended(
-                  heroTag: "2",
-                  backgroundColor: Colors.white,
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4.0)),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.all(18.0),
+                    backgroundColor: Colors.orange.shade800,
+                  ),
                   onPressed: () async {
-                    showSortieStockModal(context, onFinished: () {
-                      dataController.loadStockData(1);
-                    });
+                    showSortieStockModal(context);
                   },
-                  icon: const Icon(CupertinoIcons.minus,
-                      size: 14.0, color: Colors.red),
+                  icon: const Icon(CupertinoIcons.minus_circle_fill,
+                      size: 14.0, color: Colors.white),
                   label: const Text(
                     "Sortie",
                     style:
-                        TextStyle(color: Colors.red, fontFamily: defaultFont),
+                        TextStyle(color: Colors.white, fontFamily: defaultFont),
                   ),
                 ),
               ],
             )
           : null,
-    );
-  }
-
-  Widget _globalView() {
-    return Obx(
-      () => dataController.stocks.isEmpty
-          ? const EmptyState()
-          : ListView.builder(
-              controller: controller,
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.all(10.0),
-              itemCount: dataController.stocks.length,
-              itemBuilder: (BuildContext context, int index) {
-                var data = dataController.stocks[index];
-                return StockHomeCard(data: data);
-              },
-            ),
     );
   }
 }
@@ -154,6 +179,7 @@ class StockHomeCard extends StatelessWidget {
           width: MediaQuery.of(context).size.width,
           child: Card(
             margin: EdgeInsets.zero,
+            color: data.solde == 0 ? Colors.orange.shade700 : Colors.white,
             child: Padding(
               padding: const EdgeInsets.all(5.0),
               child: Row(
@@ -165,32 +191,25 @@ class StockHomeCard extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.calendar_month_outlined,
-                            color: Colors.grey,
+                            color: data.solde == 0
+                                ? Colors.white
+                                : Colors.grey.shade800,
+                            size: 16.0,
                           ),
                           Text(
-                            data.produitCreateAt!.split('-').first,
-                            style: const TextStyle(
-                              fontSize: 15.0,
+                            data.produitCreateAt!,
+                            style: TextStyle(
+                              fontSize: 12.0,
                               fontFamily: defaultFont,
-                              fontWeight: FontWeight.w800,
-                              color: defaultTextColor,
+                              fontWeight: FontWeight.w600,
+                              color: data.solde == 0
+                                  ? Colors.white
+                                  : defaultTextColor,
                             ),
                           ),
                         ],
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(5, 0, 0, 0),
-                        child: Text(
-                          "${data.produitCreateAt!.split('-')[1]}/${data.produitCreateAt!.split('-').last}",
-                          style: const TextStyle(
-                            fontSize: 10.0,
-                            fontFamily: defaultFont,
-                            fontWeight: FontWeight.w500,
-                            color: defaultTextColor,
-                          ),
-                        ),
                       ),
                     ],
                   ),
@@ -205,7 +224,9 @@ class StockHomeCard extends StatelessWidget {
                             fontSize: 11.0,
                             fontFamily: defaultFont,
                             fontWeight: FontWeight.w400,
-                            color: Colors.grey.shade800,
+                            color: data.solde == 0
+                                ? Colors.white
+                                : Colors.grey.shade800,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -214,11 +235,13 @@ class StockHomeCard extends StatelessWidget {
                         ),
                         Text(
                           data.produitLibelle!,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12.0,
                             fontFamily: defaultFont,
                             fontWeight: FontWeight.w500,
-                            color: defaultTextColor,
+                            color: data.solde == 0
+                                ? Colors.white
+                                : defaultTextColor,
                           ),
                         ),
                       ],
@@ -235,19 +258,21 @@ class StockHomeCard extends StatelessWidget {
                             fontSize: 11.0,
                             fontFamily: defaultFont,
                             fontWeight: FontWeight.w400,
-                            color: Colors.grey.shade800,
+                            color: data.solde == 0
+                                ? Colors.white
+                                : Colors.grey.shade800,
                           ),
                         ),
                         const SizedBox(
                           height: 3.0,
                         ),
                         Text(
-                          data.entree!.totalEntrees.toString(),
-                          style: const TextStyle(
+                          data.totEntree.toString(),
+                          style: TextStyle(
                             fontSize: 12.0,
                             fontFamily: defaultFont,
                             fontWeight: FontWeight.w700,
-                            color: Colors.blue,
+                            color: data.solde == 0 ? Colors.white : Colors.blue,
                           ),
                         ),
                       ],
@@ -264,19 +289,23 @@ class StockHomeCard extends StatelessWidget {
                             fontSize: 11.0,
                             fontFamily: defaultFont,
                             fontWeight: FontWeight.w400,
-                            color: Colors.grey.shade800,
+                            color: data.solde == 0
+                                ? Colors.white
+                                : Colors.grey.shade800,
                           ),
                         ),
                         const SizedBox(
                           height: 3.0,
                         ),
                         Text(
-                          data.sortie!.totalSorties.toString(),
-                          style: const TextStyle(
+                          data.totSortie.toString(),
+                          style: TextStyle(
                             fontSize: 12.0,
                             fontFamily: defaultFont,
                             fontWeight: FontWeight.w700,
-                            color: Colors.deepOrange,
+                            color: data.solde == 0
+                                ? Colors.white
+                                : Colors.deepOrange,
                           ),
                         ),
                       ],
@@ -293,7 +322,9 @@ class StockHomeCard extends StatelessWidget {
                             fontSize: 11.0,
                             fontFamily: defaultFont,
                             fontWeight: FontWeight.w400,
-                            color: Colors.grey.shade800,
+                            color: data.solde == 0
+                                ? Colors.white
+                                : Colors.grey.shade800,
                           ),
                         ),
                         const SizedBox(
@@ -301,11 +332,12 @@ class StockHomeCard extends StatelessWidget {
                         ),
                         Text(
                           data.solde.toString(),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12.0,
                             fontFamily: defaultFont,
                             fontWeight: FontWeight.w700,
-                            color: Colors.green,
+                            color:
+                                data.solde == 0 ? Colors.white : Colors.green,
                           ),
                         ),
                       ],
@@ -319,28 +351,29 @@ class StockHomeCard extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: Colors.blue,
                           borderRadius: BorderRadius.circular(30),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(.3),
+                              blurRadius: 1.5,
+                              offset: const Offset(0, 2),
+                            )
+                          ],
                         ),
                         child: Material(
                           borderRadius: BorderRadius.circular(30),
                           color: Colors.transparent,
                           child: InkWell(
                             borderRadius: BorderRadius.circular(30),
-                            onTap: () async {
-                              dataController
-                                  .loadStockData(
-                                2,
-                                id: data.entree!.entreeId!,
-                              )
-                                  .then((value) {
-                                showSortiesDetailsModal(context, produit: data);
-                              });
-                              // ignore: use_build_context_synchronously
+                            onTap: () {
+                              showSortiesDetailsModal(context, produit: data);
                             },
                             child: Center(
                               child: SvgPicture.asset(
                                 "assets/icons/more.svg",
                                 colorFilter: const ColorFilter.mode(
-                                    lightColor, BlendMode.srcIn),
+                                  lightColor,
+                                  BlendMode.srcIn,
+                                ),
                                 height: 14.0,
                               ),
                             ),
@@ -354,8 +387,15 @@ class StockHomeCard extends StatelessWidget {
                         height: 30.0,
                         width: 30.0,
                         decoration: BoxDecoration(
-                          color: Colors.brown,
+                          color: data.solde == 0 ? Colors.white : Colors.brown,
                           borderRadius: BorderRadius.circular(30),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(.3),
+                              blurRadius: 1.5,
+                              offset: const Offset(0, 2),
+                            )
+                          ],
                         ),
                         child: Material(
                           borderRadius: BorderRadius.circular(30),
@@ -365,33 +405,44 @@ class StockHomeCard extends StatelessWidget {
                             onTap: () async {
                               DGCustomDialog.showInteraction(context,
                                   message:
-                                      "Etes-vous sûr de vouloir supprimer définitivement ce stock ?",
+                                      "Etes-vous sûr de vouloir supprimer définitivement ce produit ? Attention ! cette action est irreversible !",
                                   onValidated: () async {
-                                var db = await DBService.initDb();
-                                var id = await db.update(
-                                    "produits", {"produit_state": "deleted"},
-                                    where: "produit_id = ?",
-                                    whereArgs: [data.produitId]);
-                                if (id != null) {
-                                  await db.update(
-                                      "sorties", {"sortie_state": "deleted"},
-                                      where: "sortie_produit_id = ?",
-                                      whereArgs: [data.produitId]);
-                                  await db.update(
-                                      "entrees", {"entree_state": "deleted"},
-                                      where: "entree_produit_id = ?",
-                                      whereArgs: [data.produitId]);
-                                  dataController.loadStockData(1);
-                                  EasyLoading.showSuccess(
-                                      "Suppression effectuée !");
-                                }
+                                Api.request(
+                                    url: 'data.delete',
+                                    method: 'post',
+                                    body: {
+                                      "table": "produits",
+                                      "id": data.id,
+                                      "state": "produit_state"
+                                    }).then((res) async {
+                                  await Api.request(
+                                      url: 'data.delete',
+                                      method: 'post',
+                                      body: {
+                                        "table": "entrees",
+                                        "id": data.id,
+                                        "id_field": "produit_id",
+                                        "state": "entree_state"
+                                      });
+                                  await Api.request(
+                                      url: 'data.delete',
+                                      method: 'post',
+                                      body: {
+                                        "table": "sorties",
+                                        "id": data.id,
+                                        "id_field": "produit_id",
+                                        "state": "sortie_state"
+                                      });
+                                });
+                                dataController.loadStockData();
                               });
                             },
-                            child: const Center(
+                            child: Center(
                               child: Icon(
                                 CupertinoIcons.trash,
                                 size: 16.0,
-                                color: lightColor,
+                                color:
+                                    data.solde == 0 ? Colors.red : lightColor,
                               ),
                             ),
                           ),

@@ -9,7 +9,7 @@ import 'dashline.dart';
 import 'ticket_card.dart';
 
 class InventoryCard extends StatelessWidget {
-  final Operations item;
+  final Operation item;
   const InventoryCard({
     super.key,
     required this.item,
@@ -79,7 +79,7 @@ class InventoryCard extends StatelessWidget {
                             width: 5.0,
                           ),
                           Text(
-                            item.operationDate!,
+                            item.operationCreateAt!,
                             style: const TextStyle(
                               fontFamily: defaultFont,
                               fontSize: 10.0,
@@ -111,7 +111,7 @@ class InventoryCard extends StatelessWidget {
                         ),
                         onSelected: (value) {
                           if (value == 1) {
-                            showInventoryDetails(context, item.operationId);
+                            showInventoryDetails(context, item.id);
                           }
                         },
                         itemBuilder: (context) => [
@@ -174,7 +174,7 @@ class InventoryCard extends StatelessWidget {
                   ),
                   RichText(
                     text: TextSpan(
-                      text: item.totalPayment!.toStringAsFixed(2),
+                      text: item.operationMontant!.toStringAsFixed(2),
                       style: const TextStyle(
                         fontFamily: defaultFont,
                         fontSize: 18.0,

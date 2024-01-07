@@ -1,10 +1,10 @@
 import 'package:animate_do/animate_do.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import '/ui/widgets/empty_state.dart';
-import '/services/db.service.dart';
 import '/ui/widgets/search_input.dart';
 import '../../global/controllers.dart';
 import '../../models/facture.dart';
@@ -24,20 +24,58 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  rechercheClient(String k) async {
-    var db = await DBService.initDb();
-    var json = await db.rawQuery(
-        "SELECT * FROM factures INNER JOIN clients ON factures.facture_client_id = clients.client_id WHERE factures.facture_statut = 'en cours' AND NOT factures.facture_state='deleted' AND clients.client_nom LIKE '%$k%'");
-    dataController.factures.clear();
-    for (var e in json) {
-      dataController.factures.add(Facture.fromMap(e));
-    }
+  List<Facture> filteredList = [];
+  @override
+  void initState() {
+    super.initState();
+    dataController.countDaySum();
+    dataController.refreshDashboardCounts();
+    SchedulerBinding.instance.addPostFrameCallback((_) async {
+      dataController.dataLoading.value = true;
+      dataController.loadFacturesEnAttente().then((res) {
+        dataController.dataLoading.value = false;
+      });
+    });
+    dataController.factures.listen((data) {
+      if (mounted) {
+        setState(() {
+          filteredList = List.from(data);
+        });
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: const CustomAppBar(title: "Tableau de bord"),
+      floatingActionButton: Obx(
+        () => ZoomIn(
+          child: FloatingActionButton(
+            backgroundColor: primaryColor,
+            onPressed: () async {
+              dataController.dataLoading.value = true;
+              dataController.refreshDatas().then((value) {
+                dataController.dataLoading.value = false;
+              });
+            },
+            child: dataController.dataLoading.value
+                ? const SizedBox(
+                    height: 25.0,
+                    width: 25.0,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 3.0,
+                    ),
+                  )
+                : const Icon(
+                    Icons.refresh_rounded,
+                    size: 22,
+                    color: Colors.white,
+                  ),
+          ),
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -74,8 +112,21 @@ class _DashboardPageState extends State<DashboardPage> {
                         Flexible(
                           child: SearchInput(
                             hinteText: "Recherche facture du client...",
-                            onSearched: (k) {
-                              rechercheClient(k!);
+                            onSearched: (value) {
+                              if (value!.isEmpty) {
+                                setState(() {
+                                  filteredList =
+                                      List.from(dataController.factures);
+                                });
+                              } else {
+                                setState(() {
+                                  filteredList = dataController.factures
+                                      .where((item) => item.client!.clientNom!
+                                          .toLowerCase()
+                                          .contains(value.toLowerCase()))
+                                      .toList();
+                                });
+                              }
                             },
                           ),
                         ),
@@ -116,37 +167,31 @@ class _DashboardPageState extends State<DashboardPage> {
                   ],
                 ),
               ),
-              _builBillWaiting(context)
+              filteredList.isEmpty
+                  ? const EmptyState()
+                  : GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(0),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount:
+                            (MediaQuery.of(context).size.width ~/ 300).toInt(),
+                        childAspectRatio: 2.2,
+                        crossAxisSpacing: 15.0,
+                        mainAxisSpacing: 15.0,
+                      ),
+                      itemCount: filteredList.length,
+                      itemBuilder: (context, index) {
+                        var item = filteredList[index];
+                        return FactureCard(
+                          item: item,
+                        );
+                      },
+                    )
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _builBillWaiting(context) {
-    return Obx(
-      () => dataController.factures.isEmpty
-          ? const EmptyState()
-          : GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(0),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount:
-                    (MediaQuery.of(context).size.width ~/ 300).toInt(),
-                childAspectRatio: 2.2,
-                crossAxisSpacing: 15.0,
-                mainAxisSpacing: 15.0,
-              ),
-              itemCount: dataController.factures.length,
-              itemBuilder: (context, index) {
-                var item = dataController.factures[index];
-                return FactureCard(
-                  item: item,
-                );
-              },
-            ),
     );
   }
 

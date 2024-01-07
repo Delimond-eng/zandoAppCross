@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
+import 'package:zandoprintapp/global/controllers.dart';
 import '../../../models/compte.dart';
 import '/services/db.service.dart';
 import '../../widgets/empty_state.dart';
@@ -14,7 +15,7 @@ import '../util.dart';
 
 Future<void> showCompteFilterModal(context,
     {required Function(Compte compte) onSelected}) async {
-  List<Compte> comptes = await getComptes();
+  List<Compte> comptes = List.from(dataController.allComptes);
   showCustomModal(
     context,
     width: MediaQuery.of(context).size.width / 1.5,
@@ -31,19 +32,7 @@ Future<void> showCompteFilterModal(context,
               children: [
                 SearchInput(
                   hinteText: "Rechercher client...",
-                  onSearched: (val) async {
-                    var db = await DBService.initDb();
-                    try {
-                      var allComptes = await db.rawQuery(
-                          "SELECT * FROM comptes WHERE NOT compte_state='deleted' AND compte_libelle LIKE '%$val%'");
-                      setter(() {
-                        comptes.clear();
-                        for (var e in allComptes) {
-                          comptes.add(Compte.fromMap(e));
-                        }
-                      });
-                    } catch (e) {}
-                  },
+                  onSearched: (val) async {},
                 ),
                 if (comptes.isEmpty) ...[
                   const EmptyState()

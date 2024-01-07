@@ -3,19 +3,20 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:lottie/lottie.dart';
+import 'package:zandoprintapp/ui/widgets/submit_btn.dart';
+import '../../../services/api.dart';
 import '/services/db.service.dart';
 import '/ui/modals/util.dart';
 import '/ui/widgets/custom_field.dart';
 
 import '../../../global/controllers.dart';
-import '../../../global/data_crypt.dart';
 import '../../../models/user.dart';
 import '/config/utils.dart';
 
 Future<void> showLoginModal(context, {VoidCallback? onLoggedIn}) async {
   final userName = TextEditingController();
   final userPass = TextEditingController();
-  await createDefaultUser();
+  bool isLoading = false;
   showCustomModal(
     context,
     width: 380.0,
@@ -45,101 +46,91 @@ Future<void> showLoginModal(context, {VoidCallback? onLoggedIn}) async {
             ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.all(15.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CustomField(
-                hintText: "Nom d'utilisateur",
-                iconPath: "assets/icons/user.svg",
-                controller: userName,
-              ),
-              const SizedBox(
-                height: 10.0,
-              ),
-              CustomField(
-                hintText: "Mot de passe",
-                isPassword: true,
-                iconPath: "assets/icons/lock.svg",
-                controller: userPass,
-              ),
-              const SizedBox(
-                height: 10.0,
-              ),
-              SizedBox(
-                width: MediaQuery.of(context).size.width,
-                height: 50.0,
-                child: ZoomIn(
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      final db = await DBService.initDb();
-                      if (userName.text.isEmpty) {
-                        EasyLoading.showToast(
-                          'Nom d\'utilisateur est requis pour la connexion !',
-                        );
-                        return;
-                      }
-                      if (userPass.text.isEmpty) {
-                        EasyLoading.showToast(
-                          'Nom d\'utilisateur est requis pour la connexion !',
-                        );
-                        return;
-                      }
-                      try {
-                        String uname = userName.text;
-                        String upass = Cryptage.encrypt(userPass.text);
-                        var checkedUser = await db.rawQuery(
-                            "SELECT * FROM users WHERE user_name=? AND user_pass=?",
-                            [uname, upass]);
-                        if (checkedUser.isNotEmpty) {
-                          User connected = User.fromMap(checkedUser[0]);
-                          if (connected.userAccess == "allowed") {
-                            authController.user.value = connected;
-                            Future.delayed(Duration.zero, () {
-                              Navigator.pop(context);
-                            });
-                            onLoggedIn!.call();
-                            EasyLoading.showToast(
-                              'Bienvenue !, connexion établie avec succès !',
-                            );
-                            return;
-                          } else {
-                            EasyLoading.showToast(
-                                "l'accès à ce compte est restreint, l'administrateur doit activer le compte pour vous connecter !");
-                            return;
-                          }
-                        } else {
+        StatefulBuilder(builder: (context, setter) {
+          return Padding(
+            padding: const EdgeInsets.all(15.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CustomField(
+                  hintText: "Nom d'utilisateur",
+                  iconPath: "assets/icons/user.svg",
+                  controller: userName,
+                ),
+                const SizedBox(
+                  height: 10.0,
+                ),
+                CustomField(
+                  hintText: "Mot de passe",
+                  isPassword: true,
+                  iconPath: "assets/icons/lock.svg",
+                  controller: userPass,
+                ),
+                const SizedBox(
+                  height: 10.0,
+                ),
+                SizedBox(
+                  width: MediaQuery.of(context).size.width,
+                  height: 50.0,
+                  child: ZoomIn(
+                    child: SubmitButton(
+                      loading: isLoading,
+                      onPressed: () async {
+                        if (userName.text.isEmpty) {
                           EasyLoading.showToast(
-                              "Mot de passe ou nom utilisateur invalide !");
+                            'Nom d\'utilisateur est requis pour la connexion !',
+                          );
                           return;
                         }
-                      } catch (err) {
-                        if (kDebugMode) {
-                          print("error from connect user statment: $err");
+                        if (userPass.text.isEmpty) {
+                          EasyLoading.showToast(
+                            'Nom d\'utilisateur est requis pour la connexion !',
+                          );
+                          return;
                         }
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryColor,
-                      elevation: 10.0,
-                      textStyle: const TextStyle(
-                        fontFamily: defaultFont,
-                        color: lightColor,
-                        fontSize: 14.0,
-                      ),
-                    ),
-                    icon: const Icon(Icons.lock_open_rounded, size: 16.0),
-                    label: const Text(
-                      "S'Authentifier",
+                        try {
+                          setter(() => isLoading = true);
+                          Api.request(method: 'post', url: "user.login", body: {
+                            "name": userName.text,
+                            "password": userPass.text,
+                          }).then((res) {
+                            setter(() => isLoading = false);
+                            if (res.containsKey('errors')) {
+                              EasyLoading.showToast(res['errors'].toString());
+                              return;
+                            }
+                            if (res['status'] == 'success') {
+                              User connected = User.fromMap(res['user']);
+                              authController.user.value = connected;
+                              Future.delayed(Duration.zero, () {
+                                Navigator.pop(context);
+                              });
+                              onLoggedIn!.call();
+                              EasyLoading.showToast(
+                                'Bienvenue !, connexion établie avec succès !',
+                              );
+                            }
+                          }).catchError((e) {
+                            debugPrint(e.toString());
+                            setter(() => isLoading = false);
+                          });
+                        } catch (err) {
+                          setter(() => isLoading = false);
+                          if (kDebugMode) {
+                            print("error from connect user statment: $err");
+                          }
+                        }
+                      },
+                      icon: Icons.lock_open_rounded,
+                      label: "S'Authentifier",
                     ),
                   ),
-                ),
-              )
-            ],
-          ),
-        )
+                )
+              ],
+            ),
+          );
+        })
       ],
     ),
   );

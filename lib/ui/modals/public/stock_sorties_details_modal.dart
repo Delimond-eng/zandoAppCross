@@ -2,19 +2,16 @@
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_easyloading/flutter_easyloading.dart';
-import 'package:get/get.dart';
-import 'package:zandoprintapp/services/db.service.dart';
+import 'package:zandoprintapp/global/controllers.dart';
 import '../../../models/stock.dart';
+import '../../../services/api.dart';
 import '../../widgets/dashline.dart';
 import '../../widgets/empty_state.dart';
-import '/global/controllers.dart';
 
 import '../../../config/utils.dart';
 import '../util.dart';
 
 Future<void> showSortiesDetailsModal(context, {Produit? produit}) async {
-  dataController.loadStockData(2, id: produit!.produitId);
   int current = 0;
   showCustomModal(
     context,
@@ -25,137 +22,133 @@ Future<void> showSortiesDetailsModal(context, {Produit? produit}) async {
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(40, 10, 0, 0),
-            child: Text(
-              "Stock : ${produit.produitLibelle!}. détails",
-              style: const TextStyle(
-                fontFamily: defaultFont,
-                color: defaultTextColor,
-                fontSize: 20.0,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 10),
+            padding: const EdgeInsets.fromLTRB(40, 10, 10, 0),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                TabButton(
-                  label: "Sorties",
-                  isActive: current == 0,
-                  onPressed: () {
-                    setter(() => current = 0);
-                    dataController.loadStockData(2, id: produit.produitId);
-                  },
+                Text(
+                  "Details stock du produit : ${produit!.produitLibelle}",
+                  style: const TextStyle(
+                    fontFamily: defaultFont,
+                    color: defaultTextColor,
+                    fontSize: 17.0,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
-                const SizedBox(
-                  width: 10,
-                ),
-                TabButton(
-                  label: 'Entrées',
-                  isActive: current != 0,
-                  onPressed: () {
-                    setter(() => current = 1);
-                    dataController.loadStockData(0, id: produit.produitId);
-                  },
-                ),
+                Row(
+                  children: [
+                    TabButton(
+                      label: "Sorties",
+                      isActive: current == 0,
+                      onPressed: () {
+                        setter(() => current = 0);
+                      },
+                    ),
+                    const SizedBox(
+                      width: 10,
+                    ),
+                    TabButton(
+                      label: 'Entrées',
+                      isActive: current != 0,
+                      onPressed: () {
+                        setter(() => current = 1);
+                      },
+                    ),
+                  ],
+                )
               ],
             ),
           ),
+          const SizedBox(
+            height: 5.0,
+          ),
           DashedLine(
-            space: 2.0,
+            space: 4.0,
             color: Colors.grey.withOpacity(.4),
           ),
           if (current == 0) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(15.0, 20.0, 15.0, 15.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Obx(
-                    () => dataController.allSorties.isEmpty
-                        ? const EmptyState()
-                        : ListView.builder(
-                            physics: const BouncingScrollPhysics(),
-                            padding: const EdgeInsets.all(10.0),
-                            shrinkWrap: true,
-                            itemCount: dataController.allSorties.length,
-                            itemBuilder: (BuildContext context, int index) {
-                              var data = dataController.allSorties[index];
-                              return SortieCard(
-                                data: data,
-                                onDeleted: () {
-                                  DGCustomDialog.showInteraction(context,
-                                      message:
-                                          "Etes-vous sûr de vouloir supprimer cette sortie stock ?",
-                                      onValidated: () async {
-                                    var db = await DBService.initDb();
-                                    var id = await db.update(
-                                        "sorties", {"sortie_state": "deleted"},
-                                        where: "sortie_id = ?",
-                                        whereArgs: [data.sortie!.sortieId]);
-                                    if (id != null) {
-                                      dataController.loadStockData(2,
-                                          id: data.produitId);
-                                      dataController.loadStockData(1);
-                                      EasyLoading.showSuccess(
-                                          "Suppression effectuée !");
-                                    }
+              child: produit.sorties!.isEmpty
+                  ? const EmptyState()
+                  : ListView.builder(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.all(10.0),
+                      shrinkWrap: true,
+                      itemCount: produit.sorties!.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        var data = produit.sorties![index];
+                        return SortieCard(
+                          data: data,
+                          onDeleted: () {
+                            DGCustomDialog.showInteraction(context,
+                                message:
+                                    "Etes-vous sûr de vouloir supprimer cette sortie stock ?",
+                                onValidated: () async {
+                              Api.request(
+                                  url: 'data.delete',
+                                  method: 'post',
+                                  body: {
+                                    "table": "sorties",
+                                    "id": data.id,
+                                    "state": "sortie_state"
+                                  }).then((res) async {
+                                if (res.containsKey('status')) {
+                                  int index = produit.sorties!.indexOf(data);
+                                  setter(() {
+                                    produit.sorties!.removeAt(index);
+                                    dataController.loadStockData();
                                   });
-                                },
-                              );
-                            },
-                          ),
-                  )
-                ],
-              ),
+                                }
+                              });
+                            });
+                          },
+                        );
+                      },
+                    ),
             ),
           ],
           if (current == 1) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(15.0, 20.0, 15.0, 15.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Obx(
-                    () => dataController.allEntrees.isEmpty
-                        ? const EmptyState()
-                        : ListView.builder(
-                            physics: const BouncingScrollPhysics(),
-                            padding: const EdgeInsets.all(10.0),
-                            shrinkWrap: true,
-                            itemCount: dataController.allEntrees.length,
-                            itemBuilder: (BuildContext context, int index) {
-                              var data = dataController.allEntrees[index];
-                              return EntreeCard(
-                                data: data,
-                                onDeleted: () {
-                                  DGCustomDialog.showInteraction(context,
-                                      message:
-                                          "Etes-vous sûr de vouloir supprimer cette entrée stock ?",
-                                      onValidated: () async {
-                                    var db = await DBService.initDb();
-                                    var id = await db.update(
-                                        "entrees", {"entree_state": "deleted"},
-                                        where: "entree_id = ?",
-                                        whereArgs: [data.entree!.entreeId!]);
-                                    if (id != null) {
-                                      dataController.loadStockData(0,
-                                          id: data.produitId);
-                                      dataController.loadStockData(1);
-                                      EasyLoading.showSuccess(
-                                          "Suppression effectuée !");
-                                    }
+              child: produit.entrees!.isEmpty
+                  ? const EmptyState()
+                  : ListView.builder(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.all(10.0),
+                      shrinkWrap: true,
+                      itemCount: produit.entrees!.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        var data = produit.entrees![index];
+                        return EntreeCard(
+                          data: data,
+                          onDeleted: () {
+                            DGCustomDialog.showInteraction(context,
+                                message:
+                                    "Etes-vous sûr de vouloir supprimer cette entrée stock ?",
+                                onValidated: () async {
+                              Api.request(
+                                  url: 'data.delete',
+                                  method: 'post',
+                                  body: {
+                                    "table": "entrees",
+                                    "id": data.id,
+                                    "state": "entree_state"
+                                  }).then((res) async {
+                                if (res.containsKey('status')) {
+                                  int index = produit.entrees!.indexOf(data);
+                                  setter(() {
+                                    produit.entrees!.removeAt(index);
+                                    dataController.loadStockData();
                                   });
-                                },
-                              );
-                            },
-                          ),
-                  )
-                ],
-              ),
+                                }
+                              });
+                            });
+                          },
+                        );
+                      },
+                    ),
             ),
           ]
         ],
@@ -209,7 +202,7 @@ class TabButton extends StatelessWidget {
 }
 
 class SortieCard extends StatelessWidget {
-  final Produit data;
+  final Sortie data;
   final VoidCallback? onDeleted;
   const SortieCard({
     super.key,
@@ -237,64 +230,23 @@ class SortieCard extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.calendar_month_outlined,
-                            color: Colors.grey,
+                            color: Colors.grey.shade700,
+                            size: 16.0,
                           ),
                           Text(
-                            data.sortie!.sortieCreateAt!.split('-').first,
+                            data.sortieCreateAt!,
                             style: const TextStyle(
-                              fontSize: 15.0,
+                              fontSize: 12.0,
                               fontFamily: defaultFont,
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w600,
                               color: defaultTextColor,
                             ),
                           ),
                         ],
                       ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(5, 0, 0, 0),
-                        child: Text(
-                          "${data.sortie!.sortieCreateAt!.split('-')[1]}/${data.sortie!.sortieCreateAt!.split('-').last}",
-                          style: const TextStyle(
-                            fontSize: 10.0,
-                            fontFamily: defaultFont,
-                            fontWeight: FontWeight.w500,
-                            color: defaultTextColor,
-                          ),
-                        ),
-                      ),
                     ],
-                  ),
-                  Flexible(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          "Libellé produit",
-                          style: TextStyle(
-                            fontSize: 11.0,
-                            fontFamily: defaultFont,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.grey.shade800,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(
-                          height: 3.0,
-                        ),
-                        Text(
-                          data.produitLibelle!,
-                          style: const TextStyle(
-                            fontSize: 12.0,
-                            fontFamily: defaultFont,
-                            fontWeight: FontWeight.w500,
-                            color: defaultTextColor,
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
                   Flexible(
                     child: Column(
@@ -314,7 +266,7 @@ class SortieCard extends StatelessWidget {
                           height: 3.0,
                         ),
                         Text(
-                          data.sortie!.sortieMotif!,
+                          data.sortieMotif!,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontSize: 12.0,
@@ -344,7 +296,7 @@ class SortieCard extends StatelessWidget {
                           height: 3.0,
                         ),
                         Text(
-                          data.sortie!.sortieQte!.toString(),
+                          data.sortieQte!.toString(),
                           style: const TextStyle(
                             fontSize: 12.0,
                             fontFamily: defaultFont,
@@ -359,7 +311,7 @@ class SortieCard extends StatelessWidget {
                     height: 30.0,
                     width: 30.0,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
+                      color: Colors.orange,
                       borderRadius: BorderRadius.circular(30),
                     ),
                     child: Material(
@@ -371,7 +323,7 @@ class SortieCard extends StatelessWidget {
                         child: const Icon(
                           CupertinoIcons.trash,
                           size: 16.0,
-                          color: defaultTextColor,
+                          color: Colors.white,
                         ),
                       ),
                     ),
@@ -392,7 +344,7 @@ class SortieCard extends StatelessWidget {
 }
 
 class EntreeCard extends StatelessWidget {
-  final Produit data;
+  final Entree data;
   final VoidCallback? onDeleted;
   const EntreeCard({
     super.key,
@@ -420,64 +372,23 @@ class EntreeCard extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.calendar_month_outlined,
-                            color: Colors.grey,
+                            color: Colors.grey.shade700,
+                            size: 16.0,
                           ),
                           Text(
-                            data.entree!.entreeCreateAt!.split('-').first,
+                            data.entreeCreateAt!,
                             style: const TextStyle(
-                              fontSize: 15.0,
+                              fontSize: 12.0,
                               fontFamily: defaultFont,
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w600,
                               color: defaultTextColor,
                             ),
                           ),
                         ],
                       ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(5, 0, 0, 0),
-                        child: Text(
-                          "${data.entree!.entreeCreateAt!.split('-')[1]}/${data.entree!.entreeCreateAt!.split('-').last}",
-                          style: const TextStyle(
-                            fontSize: 10.0,
-                            fontFamily: defaultFont,
-                            fontWeight: FontWeight.w500,
-                            color: defaultTextColor,
-                          ),
-                        ),
-                      ),
                     ],
-                  ),
-                  Flexible(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          "Libellé produit",
-                          style: TextStyle(
-                            fontSize: 11.0,
-                            fontFamily: defaultFont,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.grey.shade800,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(
-                          height: 3.0,
-                        ),
-                        Text(
-                          data.produitLibelle!,
-                          style: const TextStyle(
-                            fontSize: 12.0,
-                            fontFamily: defaultFont,
-                            fontWeight: FontWeight.w500,
-                            color: defaultTextColor,
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
                   Flexible(
                     child: Column(
@@ -497,7 +408,7 @@ class EntreeCard extends StatelessWidget {
                           height: 3.0,
                         ),
                         Text(
-                          data.entree!.entreeQte.toString(),
+                          data.entreeQte.toString(),
                           style: const TextStyle(
                             fontSize: 12.0,
                             fontFamily: defaultFont,
@@ -526,7 +437,7 @@ class EntreeCard extends StatelessWidget {
                           height: 3.0,
                         ),
                         Text(
-                          '${data.entree!.entreePrixAchat} ${data.entree!.entreePrixDevise}',
+                          '${data.entreePrixAchat} ${data.entreePrixDevise}',
                           style: const TextStyle(
                             fontSize: 12.0,
                             fontFamily: defaultFont,
@@ -541,7 +452,7 @@ class EntreeCard extends StatelessWidget {
                     height: 30.0,
                     width: 30.0,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
+                      color: Colors.orange.shade700,
                       borderRadius: BorderRadius.circular(30),
                     ),
                     child: Material(
@@ -553,7 +464,7 @@ class EntreeCard extends StatelessWidget {
                         child: const Icon(
                           CupertinoIcons.trash,
                           size: 16.0,
-                          color: defaultTextColor,
+                          color: Colors.white,
                         ),
                       ),
                     ),

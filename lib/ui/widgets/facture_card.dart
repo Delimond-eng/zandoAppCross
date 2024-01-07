@@ -5,7 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:zandoprintapp/services/db.service.dart';
+import 'package:zandoprintapp/services/utils.dart';
 import 'package:zandoprintapp/ui/modals/public/facture_detail_modal.dart';
+import '../../services/api.dart';
+import '../../utilities/modals.dart';
 import '../modals/util.dart';
 import '/global/controllers.dart';
 import '/ui/modals/public/pay_modal.dart';
@@ -24,10 +27,15 @@ class FactureCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var size = MediaQuery.of(context).size;
+    var date = DateTime.now();
+    String strDate = dateToString(date);
     return TicketCard(
       height: size.height,
       width: size.width,
       color: lightColor,
+      borderColor: item.factureDateCreate!.contains(strDate)
+          ? Colors.blue.shade300
+          : Colors.grey.shade300,
       isCornerRounded: true,
       padding: const EdgeInsets.all(8.0),
       child: Column(
@@ -115,11 +123,10 @@ class FactureCard extends StatelessWidget {
                               showFactureDetails(context, facture: item);
                               break;
                             case 2:
-                              dataController.loadAllComptes();
                               showPayModal(context, facture: item);
                               break;
                             case 3:
-                              deleteFacture(context, id: item.factureId!);
+                              deleteFacture(context, facture: item);
                               break;
                             default:
                           }
@@ -154,7 +161,7 @@ class FactureCard extends StatelessWidget {
                           PopupMenuItem(
                             value: 2,
                             enabled:
-                                item.factureStatut != "en cours" ? false : true,
+                                item.factureStatut != "paie" ? true : false,
                             child: Row(
                               children: <Widget>[
                                 SvgPicture.asset(
@@ -182,7 +189,7 @@ class FactureCard extends StatelessWidget {
                           PopupMenuItem(
                             value: 3,
                             enabled:
-                                item.factureStatut != "en cours" ? false : true,
+                                item.factureStatut != "paie" ? true : false,
                             child: Row(
                               children: <Widget>[
                                 SvgPicture.asset(
@@ -219,7 +226,7 @@ class FactureCard extends StatelessWidget {
                       Icon(
                         Icons.circle,
                         size: 10.0,
-                        color: item.factureStatut == "en cours"
+                        color: item.factureStatut != "paie"
                             ? Colors.orange
                             : Colors.green,
                       ),
@@ -227,9 +234,7 @@ class FactureCard extends StatelessWidget {
                         width: 5.0,
                       ),
                       Text(
-                        item.factureStatut == "en cours"
-                            ? "En attente"
-                            : "Payée",
+                        item.factureStatut != "paie" ? "En attente" : "Payée",
                         style: const TextStyle(
                           fontFamily: defaultFont,
                           fontSize: 10.0,
@@ -328,21 +333,36 @@ class FactureCard extends StatelessWidget {
     );
   }
 
-  void deleteFacture(context, {int? id}) {
+  void deleteFacture(context, {Facture? facture}) {
+    if (facture!.paiements!.isNotEmpty) {
+      EasyLoading.showInfo(
+          'Vous ne pouvez pas supprimer cette facture, car elle a déjà reussie un paiement !');
+      return;
+    }
     DGCustomDialog.showInteraction(context,
         message:
             "Etes-vous sûr de vouloir supprimer cette facture définitivement ?",
         onValidated: () async {
-      var db = await DBService.initDb();
-      var requestId = await db.update("factures", {"facture_state": "deleted"},
-          where: "facture_id=?", whereArgs: [id]);
-      if (requestId != null) {
-        await db.update("facture_details", {"facture_detail_state": "deleted"},
-            where: "facture_id=?", whereArgs: [id]);
+      Xloading.showLottieLoading(context);
+      Api.request(url: 'data.delete', method: 'post', body: {
+        'table': 'factures',
+        'id': int.parse(facture!.factureId.toString()),
+        'state': 'facture_state'
+      }).then((value) async {
+        Xloading.dismiss();
+        await Api.request(url: 'data.delete', method: 'post', body: {
+          'table': 'facture_details',
+          'id_field': 'facture_id',
+          'id': int.parse(facture.factureId.toString()),
+          'state': 'facture_detail_state'
+        });
         dataController.loadFacturesEnAttente();
         dataController.loadFilterFactures("all");
-        EasyLoading.showToast("Suppression effectuée !");
-      }
+        dataController.refreshDashboardCounts();
+      }).catchError((err) {
+        Xloading.dismiss();
+        EasyLoading.showToast("Echec de traitement des informations !");
+      });
     });
   }
 }

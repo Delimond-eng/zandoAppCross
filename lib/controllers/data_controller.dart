@@ -1,5 +1,242 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
+import '../models/client.dart';
+import '../models/compte.dart';
+import '../models/currency.dart';
+import '../models/facture.dart';
+import '../models/operation.dart';
+import '../models/stock.dart';
+import '../models/user.dart';
+import '../models/item.dart';
+import '../reports/models/daily_count.dart';
+import '../reports/models/dashboard_count.dart';
+import '../reports/report.dart';
+import '../services/api.dart';
+
+class DataController extends GetxController {
+  static DataController instance = Get.find();
+  var users = <User>[].obs;
+  var factures = <Facture>[].obs;
+  var filteredFactures = <Facture>[].obs;
+  var clients = <Client>[].obs;
+  var clientFactures = <Client>[].obs;
+  var comptes = <Compte>[].obs;
+  var allComptes = <Compte>[].obs;
+  var currency = Currency().obs;
+  var items = <Item>[].obs;
+  var dashboardCounts = <DashboardCount>[].obs;
+  var dailySums = <DailyCount>[].obs;
+  var paiements = <Paiement>[].obs;
+  var paiementDetails = <Operation>[].obs;
+  var inventories = <Operation>[].obs;
+  var daySellCount = 0.0.obs;
+  var dataLoading = false.obs;
+  var stocks = <Produit>[].obs;
+
+  @override
+  void onInit() {
+    super.onInit();
+    refreshDatas();
+  }
+
+  Future<bool> refreshDatas() async {
+    await refreshConfigs();
+    await loadFacturesEnAttente();
+    await refreshDashboardCounts();
+    await refreshDayCompteSum();
+    await countDaySum();
+    await loadClients();
+    return true;
+  }
+
+  Future loadFilterFactures(String key) async {
+    var datas = await Api.request(url: 'factures.view/$key');
+    if (datas.containsKey('results')) {
+      filteredFactures.clear();
+      for (var e in datas['results']) {
+        filteredFactures.add(Facture.fromMap(e));
+      }
+    }
+    return true;
+  }
+
+  refreshDashboardCounts() async {
+    var counts = await Report.getCount();
+    dashboardCounts.clear();
+    await Future.delayed(Duration.zero);
+    dashboardCounts.addAll(counts);
+  }
+
+  refreshDayCompteSum() async {
+    var sums = await Report.getDayAccountSums();
+    dailySums.clear();
+    await Future.delayed(Duration.zero);
+    dailySums.addAll(sums);
+  }
+
+  /// Recharger les données de la configuration
+  Future<bool> refreshConfigs() async {
+    dataLoading.value = true;
+    var res = await Api.request(url: 'configs.all');
+    dataLoading.value = false;
+    if (res.containsKey('users')) {
+      var usersMap = res["users"];
+      users.clear();
+      for (var e in usersMap) {
+        users.add(User.fromMap(e));
+      }
+    }
+    if (res.containsKey('status')) {
+      currency.value = Currency.fromMap(res['currencie']);
+      if (res.containsKey('all_comptes')) {
+        var comptesArr = res['all_comptes'];
+        allComptes.clear();
+        for (var e in comptesArr) {
+          allComptes.add(Compte.fromMap(e));
+        }
+      }
+      if (res.containsKey('activated_comptes')) {
+        var activeComptesArr = res['activated_comptes'];
+        comptes.clear();
+        for (var e in activeComptesArr) {
+          comptes.add(Compte.fromMap(e));
+        }
+      }
+      if (res.containsKey('items')) {
+        items.clear();
+        for (var i in res['items']) {
+          items.add(Item.fromJson(i));
+        }
+      }
+    }
+    return true;
+  }
+
+  //COMPTE LA SOMME DE PAIEMENT JOURNALIER
+  countDaySum() async {
+    var s = await Report.dayAll();
+    daySellCount.value = double.parse(s.toString());
+  }
+
+  //RECHARGE LES FACTURES EN COURS
+  Future loadFacturesEnAttente() async {
+    try {
+      var res = await Api.request(url: 'factures.view/pending');
+      var allFactures = res['results'];
+      factures.clear();
+      for (var e in allFactures) {
+        await Future.delayed(const Duration(microseconds: 1000));
+        factures.add(Facture.fromMap(e));
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print("Error: $e");
+      }
+    }
+    return "end";
+  }
+
+  //RECHARGE LES CLIENTS
+  Future loadClients() async {
+    try {
+      var res = await Api.request(url: 'clients.all');
+      if (res.containsKey('status')) {
+        var allClients = res['clients'];
+        clients.clear();
+        for (var e in allClients) {
+          await Future.delayed(const Duration(microseconds: 1000));
+          clients.add(Client.fromMap(e));
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print("Error: $e");
+      }
+    }
+
+    return true;
+  }
+
+  //RECHARGE LES PAIEMENTS
+  Future loadPayments(String key, {field}) async {
+    switch (key) {
+      case "all":
+        dataLoading.value = true;
+        var res = await Api.request(url: 'payments/all');
+        dataLoading.value = false;
+        if (res.containsKey('results')) {
+          paiements.clear();
+          for (var e in res['results']) {
+            paiements.add(Paiement.fromJson(e));
+          }
+        }
+        break;
+      case "date":
+        dataLoading.value = true;
+        var res = await Api.request(url: 'payments/date/$field');
+        dataLoading.value = false;
+        if (res.containsKey('results')) {
+          paiements.clear();
+          for (var e in res['results']) {
+            paiements.add(Paiement.fromJson(e));
+          }
+        }
+        break;
+    }
+    return true;
+  }
+
+  //VOIR LES DETAILS D'UN PAIEMENT
+  Future showPaiementDetails(int factureId) async {
+    var res = await Api.request(url: 'payment.details/$factureId');
+    if (res.containsKey('status')) {
+      var datas = res['details'];
+      paiementDetails.clear();
+      for (var e in datas) {
+        paiementDetails.add(Operation.fromJson(e));
+      }
+    }
+    return true;
+  }
+
+  Future loadInventories(String fword, {fkey}) async {
+    return true;
+  }
+
+  Future loadStockData() async {
+    var res = await Api.request(url: 'stocks.view');
+    if (res.containsKey('status')) {
+      var datas = res['results'];
+      stocks.clear();
+      for (var e in datas) {
+        stocks.add(Produit.fromJson(e));
+      }
+    }
+  }
+
+  //MISE A JOUR DU TAUX DU JOUR
+  editCurrency({String? value}) async {
+    try {
+      var res = await Api.request(
+          url: 'currencie.create',
+          method: 'post',
+          body: {
+            "currencie_value": value,
+            "currencie_id": currency.value.currencyId
+          });
+      if (res.containsKey('status')) {
+        refreshConfigs();
+      }
+    } catch (e) {}
+  }
+}
+
+
+
+
+
+/* import 'package:flutter/foundation.dart';
+import 'package:get/get.dart';
 
 import '../models/client.dart';
 import '../models/compte.dart';
@@ -12,7 +249,6 @@ import '../reports/models/daily_count.dart';
 import '../reports/models/dashboard_count.dart';
 import '../reports/report.dart';
 import '../services/db.service.dart';
-import '../services/synchonisation.dart';
 
 class DataController extends GetxController {
   static DataController instance = Get.find();
@@ -315,7 +551,7 @@ class DataController extends GetxController {
   }
 
   Future loadStockData(int index, {int? id}) async {
-    var db = await DBService.initDb();
+    /* var db = await DBService.initDb();
     switch (index) {
       case 0:
         var query = await db.rawQuery("""SELECT * FROM entrees 
@@ -411,7 +647,7 @@ class DataController extends GetxController {
           allSorties.add(Produit.fromMap(e));
         }
         break;
-    }
+    } */
     return true;
   }
 
@@ -469,7 +705,7 @@ class DataController extends GetxController {
     } catch (e) {}
   }
 
-  Future syncUserData() async {
+  /* Future syncUserData() async {
     var db = await DBService.initDb();
     final batch = db.batch();
     var syncDatas = await Sync.outPutData();
@@ -502,5 +738,6 @@ class DataController extends GetxController {
         print("Error: $e");
       }
     }
-  }
+  } */
 }
+ */

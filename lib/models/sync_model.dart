@@ -1,4 +1,4 @@
-import 'compte.dart';
+/* import 'compte.dart';
 import 'facture.dart';
 import 'facture_detail.dart';
 import 'operation.dart';
@@ -79,3 +79,4 @@ class SyncModel {
     }
   }
 }
+ */

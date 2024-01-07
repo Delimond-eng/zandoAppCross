@@ -59,7 +59,12 @@ String strDateLongFr(String value) {
 }
 
 String dateToString(DateTime date) {
-  String converted = DateFormat("dd-MM-yyyy").format(date);
+  String converted = DateFormat("dd/MM/yyyy").format(date);
+  return converted;
+}
+
+String paresedDateString(DateTime date) {
+  String converted = DateFormat("yyyy-MM-dd").format(date);
   return converted;
 }
 
@@ -86,7 +91,7 @@ Future showDatePicked(BuildContext context) async {
   if (date != null) {
     DateTime dateConverted = DateTime(date.year, date.month, date.day);
     /* var ms = dateConverted.microsecondsSinceEpoch; */
-    return dateToString(dateConverted);
+    return paresedDateString(dateConverted);
   }
   return null!;
 }

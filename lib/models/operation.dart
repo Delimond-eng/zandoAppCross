@@ -1,123 +1,110 @@
-import '../services/utils.dart';
-import 'client.dart';
 import 'compte.dart';
 import 'facture.dart';
 import 'user.dart';
 
-class Operations {
-  dynamic operationId;
+class Operation {
+  int? id;
   String? operationLibelle;
   String? operationType;
-  String? operationMode;
-  String? operationDate;
-  dynamic operationTimestamp;
-  dynamic operationMontant;
+  double? operationMontant;
   String? operationDevise;
+  String? operationMode;
+  int? userId;
+  int? compteId;
+  int? factureId;
   String? operationState;
-  dynamic operationCompteId;
-  dynamic operationFactureId;
-  dynamic operationUserId;
-  double? totalPayment;
-  String? clientNom;
-
+  String? operationCreateAt;
   Facture? facture;
-  Client? client;
   User? user;
   Compte? compte;
 
-  Operations({
-    this.operationId,
-    this.operationLibelle,
-    this.operationType,
-    this.operationMontant,
-    this.operationMode,
-    this.operationDevise,
-    this.operationCompteId,
-    this.operationFactureId,
-    this.operationUserId,
-    this.operationState,
-    this.operationTimestamp,
-  });
+  Operation(
+      {this.id,
+      this.operationLibelle,
+      this.operationType,
+      this.operationMontant,
+      this.operationDevise,
+      this.operationMode,
+      this.userId,
+      this.compteId,
+      this.factureId,
+      this.operationState,
+      this.operationCreateAt,
+      this.facture,
+      this.user,
+      this.compte});
 
-  Map<String, dynamic> toMap() {
-    Map<String, dynamic> data = {};
+  Operation.fromJson(Map<String, dynamic> json) {
+    id = json['id'];
+    operationLibelle = json['operation_libelle'];
+    operationType = json['operation_type'];
+    operationMontant = double.parse(json['operation_montant'].toString());
+    operationDevise = json['operation_devise'];
+    operationMode = json['operation_mode'];
+    userId = json['user_id'];
+    compteId = json['compte_id'];
+    factureId = json['facture_id'];
+    operationState = json['operation_state'];
+    operationCreateAt = json['operation_create_At'];
+    facture = json['facture'] != null ? Facture.fromMap(json['facture']) : null;
+    user = json['user'] != null ? User.fromMap(json['user']) : null;
+    compte = json['compte'] != null ? Compte.fromMap(json['compte']) : null;
+  }
+}
 
-    if (operationId != null) {
-      data["operation_id"] = int.parse(operationId.toString());
-    }
+class Paiement {
+  double? totalPay;
+  int? factureId;
+  double? factureMontant;
+  String? factureDevise;
+  String? factureStatus;
+  int? clientId;
+  String? clientNom;
+  String? operationCreateAt;
+  String? operationType;
+  String? operationLibelle;
+  String? operationDevise;
+  int? compteId;
+  String? compteLibelle;
+  int? userId;
+  String? userName;
 
-    if (operationLibelle != null) {
-      data["operation_libelle"] = operationLibelle;
-    }
-    if (operationType != null) {
-      data["operation_type"] = operationType;
-    }
-    if (operationMontant != null) {
-      if (operationMontant.toString().contains(',')) {
-        data["operation_montant"] =
-            double.parse(operationMontant.toString().replaceAll(",", "."));
-      } else {
-        data["operation_montant"] = double.parse(operationMontant.toString());
-      }
-    }
-    data["operation_devise"] = operationDevise;
-    data["operation_compte_id"] = int.parse(operationCompteId.toString());
-    if (operationFactureId != null) {
-      data["operation_facture_id"] = int.parse(operationFactureId.toString());
-    } else {
-      data["operation_facture_id"] = 0;
-    }
-    DateTime now =
-        DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+  Paiement(
+      {this.totalPay,
+      this.factureId,
+      this.factureMontant,
+      this.factureDevise,
+      this.factureStatus,
+      this.clientId,
+      this.clientNom,
+      this.operationCreateAt,
+      this.operationType,
+      this.operationLibelle,
+      this.operationDevise,
+      this.compteId,
+      this.compteLibelle,
+      this.userId,
+      this.userName});
 
-    if (operationTimestamp == null) {
-      data["operation_create_At"] = dateToString(now);
-    } else {
-      data["operation_create_At"] = operationTimestamp.toString();
-    }
-    if (operationMode != null) {
-      data["operation_mode"] = operationMode;
-    } else {
-      data["operation_mode"] = "";
-    }
-    data["operation_user_id"] = int.parse(operationUserId.toString());
-    data["operation_state"] = operationState ?? "allowed";
-    return data;
+  Paiement.fromJson(Map<String, dynamic> json) {
+    totalPay = double.tryParse(json['totalPay'].toString());
+    factureId = json['facture_id'];
+    factureMontant = double.tryParse(json['facture_montant'].toString());
+    factureDevise = json['facture_devise'];
+    factureStatus = json['facture_status'];
+    clientId = json['client_id'];
+    clientNom = json['client_nom'];
+    operationCreateAt = json['operation_create_At'];
+    operationType = json['operation_type'];
+    operationLibelle = json['operation_libelle'];
+    operationDevise = json['operation_devise'];
+    compteId = json['compte_id'];
+    compteLibelle = json['compte_libelle'];
+    userId = json['user_id'];
+    userName = json['user_name'];
   }
 
-  Operations.fromMap(Map<String, dynamic> data) {
-    operationId = data["operation_id"];
-    operationLibelle = data["operation_libelle"];
-    operationDevise = data["operation_devise"];
-    operationTimestamp = data["operation_create_At"].toString();
-    operationType = data["operation_type"];
-    operationCompteId = data["operation_compte_id"];
-    operationFactureId = data["operation_facture_id"];
-    operationUserId = data["operation_user_id"];
-    operationMontant = data["operation_montant"];
-    operationState = data["operation_state"];
-    if (data["totalPay"] != null) {
-      totalPayment = data["totalPay"];
-    }
-    if (data['client_nom'] != null) {
-      clientNom = data['client_nom'];
-    }
-    if (data["operation_mode"] == null) {
-      operationMode = "";
-    } else {
-      operationMode = data["operation_mode"];
-    }
-    if (data['facture_id'] != null) {
-      facture = Facture.fromMap(data);
-    }
-    if (data["operation_user_id"] != null && data["client_id"] != null) {
-      client = Client.fromMap(data);
-    }
-    if (data["compte_id"] != null) {
-      compte = Compte.fromMap(data);
-    }
-    try {
-      operationDate = data["operation_create_At"];
-    } catch (err) {}
+  double get rest {
+    return factureMontant! - totalPay!;
   }
 }

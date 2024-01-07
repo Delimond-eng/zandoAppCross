@@ -5,7 +5,7 @@ import '/services/utils.dart';
 import '/ui/widgets/custom_btn_icon.dart';
 import '/config/utils.dart';
 
-class CustomField extends StatefulWidget {
+class CustomField<T> extends StatefulWidget {
   final String hintText;
   final bool? isPassword;
   final String iconPath;
@@ -20,6 +20,9 @@ class CustomField extends StatefulWidget {
   final List<dynamic>? dropItems;
   final bool? isCurrency;
   final bool? isDatePicker;
+  final bool? readOnly;
+  final T? selectedValue;
+  final String? fixeDevise;
   const CustomField({
     super.key,
     required this.hintText,
@@ -37,6 +40,9 @@ class CustomField extends StatefulWidget {
     this.height,
     this.isDatePicker = false,
     this.onDatePicked,
+    this.readOnly = false,
+    this.selectedValue,
+    this.fixeDevise,
   });
 
   @override
@@ -205,7 +211,7 @@ class _CustomFieldState extends State<CustomField> {
                       color: Colors.black,
                       fontSize: 12.0,
                     ),
-                    value: selectDrop,
+                    value: widget.selectedValue,
                     hint: Text(
                       widget.hintText,
                       style: const TextStyle(
@@ -239,7 +245,6 @@ class _CustomFieldState extends State<CustomField> {
                       );
                     }).toList(),
                     onChanged: (value) {
-                      setState(() => selectDrop = value);
                       widget.onChangedDrop!.call(value);
                     },
                   ),
@@ -274,6 +279,7 @@ class _CustomFieldState extends State<CustomField> {
                       : TextField(
                           keyboardType: widget.inputType ?? TextInputType.text,
                           keyboardAppearance: Brightness.dark,
+                          readOnly: widget.readOnly!,
                           controller: widget.controller,
                           style: const TextStyle(
                             fontFamily: 'Poppins',
@@ -297,58 +303,70 @@ class _CustomFieldState extends State<CustomField> {
                         ),
                 ),
                 if (widget.isCurrency!) ...[
-                  if (widget.isCurrency!) ...[
-                    SizedBox(
-                      width: 70.0,
-                      child: DropdownButton(
-                        menuMaxHeight: 200,
-                        focusColor: Colors.white.withOpacity(.7),
-                        dropdownColor: Colors.white,
-                        alignment: Alignment.centerLeft,
-                        borderRadius: BorderRadius.circular(4.0),
-                        style: const TextStyle(
+                  SizedBox(
+                    width: 70.0,
+                    child: DropdownButton(
+                      menuMaxHeight: 200,
+                      focusColor: Colors.white.withOpacity(.7),
+                      dropdownColor: Colors.white,
+                      alignment: Alignment.centerLeft,
+                      borderRadius: BorderRadius.circular(4.0),
+                      style: const TextStyle(
+                        fontFamily: defaultFont,
+                        color: Colors.black,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12.0,
+                      ),
+                      value: currency,
+                      underline: const SizedBox(),
+                      hint: const Text(
+                        "Devise",
+                        style: TextStyle(
                           fontFamily: defaultFont,
-                          color: Colors.black,
-                          fontWeight: FontWeight.w600,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w400,
                           fontSize: 12.0,
                         ),
-                        value: currency,
-                        underline: const SizedBox(),
-                        hint: const Text(
-                          "Devise",
-                          style: TextStyle(
-                            fontFamily: defaultFont,
-                            color: Colors.grey,
-                            fontWeight: FontWeight.w400,
-                            fontSize: 12.0,
-                          ),
-                        ),
-                        isExpanded: true,
-                        items: ["USD", "CDF"].map((e) {
-                          return DropdownMenuItem<String>(
-                            value: e,
-                            child: Text(
-                              e,
-                              style: const TextStyle(
-                                fontFamily: defaultFont,
-                                color: Colors.black,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12.0,
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            currency = value!;
-                            Future.delayed(Duration.zero, () {
-                              widget.onChangedCurrency!.call(value);
-                            });
-                          });
-                        },
                       ),
-                    )
-                  ]
+                      isExpanded: true,
+                      items: ["USD", "CDF"].map((e) {
+                        return DropdownMenuItem<String>(
+                          value: e,
+                          child: Text(
+                            e,
+                            style: const TextStyle(
+                              fontFamily: defaultFont,
+                              color: Colors.black,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12.0,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          currency = value!;
+                          Future.delayed(Duration.zero, () {
+                            widget.onChangedCurrency!.call(value);
+                          });
+                        });
+                      },
+                    ),
+                  )
+                ],
+                if (widget.fixeDevise != null) ...[
+                  SizedBox(
+                    width: 40.0,
+                    child: Text(
+                      widget.fixeDevise!,
+                      style: const TextStyle(
+                        fontFamily: defaultFont,
+                        color: Colors.black,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12.0,
+                      ),
+                    ),
+                  )
                 ]
               ],
               if (widget.isPassword!) ...[

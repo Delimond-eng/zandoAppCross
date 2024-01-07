@@ -7,14 +7,14 @@ class Currency {
   Map<String, dynamic> toMap() {
     Map<String, dynamic> data = {};
     if (currencyId != null) {
-      data["cid"] = currencyId;
+      data["id"] = currencyId;
     }
-    data["cvalue"] = currencyValue;
+    data["currencie_value"] = currencyValue;
     return data;
   }
 
   Currency.fromMap(Map<String, dynamic> data) {
-    currencyId = data["cid"];
-    currencyValue = data["cvalue"];
+    currencyId = data["id"];
+    currencyValue = data["currencie_value"];
   }
 }

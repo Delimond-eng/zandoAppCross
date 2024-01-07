@@ -1,8 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:zandoprintapp/ui/modals/public/client_releve_modal.dart';
+import '../../services/api.dart';
 import '/global/controllers.dart';
-import '/services/db.service.dart';
 import '/ui/modals/util.dart';
 import '../../models/client.dart';
 import '/config/utils.dart';
@@ -64,38 +66,93 @@ class ClientCard extends StatelessWidget {
                 )
               ],
             ),
-            Container(
-              height: 30.0,
-              width: 30.0,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade200,
-                shape: BoxShape.circle,
+            PopupMenuButton(
+              elevation: 1,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4.0),
               ),
-              child: Material(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(
-                  30.0,
+              child: Container(
+                height: 30.0,
+                width: 30.0,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  shape: BoxShape.circle,
                 ),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(
-                    30.0,
-                  ),
-                  onTap: () {
+                child: const Icon(
+                  CupertinoIcons.ellipsis_vertical,
+                  size: 16.0,
+                  color: Colors.black,
+                ),
+              ),
+              onSelected: (value) async {
+                switch (value) {
+                  case 1:
+                    if (item.factures!.isNotEmpty) {
+                      showClientReleve(context, client: item);
+                    } else {
+                      EasyLoading.showToast(
+                          'Aucune information disponible pour ce client !');
+                    }
+                    break;
+                  case 2:
                     deleteClient(context, item);
-                  },
-                  child: Center(
-                    child: SvgPicture.asset(
-                      "assets/icons/delete.svg",
-                      height: 14.0,
-                      colorFilter: const ColorFilter.mode(
-                        Colors.red,
-                        BlendMode.srcIn,
+                    break;
+                  default:
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 1,
+                  child: Row(
+                    children: <Widget>[
+                      SvgPicture.asset(
+                        "assets/icons/doc1.svg",
+                        height: 14.0,
+                        colorFilter: const ColorFilter.mode(
+                          Colors.green,
+                          BlendMode.srcIn,
+                        ),
                       ),
-                    ),
+                      const SizedBox(
+                        width: 5,
+                      ),
+                      const Text(
+                        'Voir relevés',
+                        style: TextStyle(
+                          fontSize: 12.0,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      )
+                    ],
                   ),
                 ),
-              ),
-            )
+                PopupMenuItem(
+                  value: 2,
+                  child: Row(
+                    children: <Widget>[
+                      SvgPicture.asset(
+                        "assets/icons/delete.svg",
+                        height: 17.0,
+                        colorFilter: const ColorFilter.mode(
+                          Colors.red,
+                          BlendMode.srcIn,
+                        ),
+                      ),
+                      const SizedBox(
+                        width: 5,
+                      ),
+                      const Text(
+                        'Supprimer',
+                        style: TextStyle(
+                          fontSize: 12.0,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -103,15 +160,23 @@ class ClientCard extends StatelessWidget {
   }
 
   Future<void> deleteClient(context, Client client) async {
-    var db = await DBService.initDb();
     DGCustomDialog.showInteraction(context,
         message:
             "Etes-vous sûr de vouloir supprimer définitivement ce client ?",
         onValidated: () {
-      db
-          .update("clients", {"client_state": "deleted"},
-              where: "client_id=?", whereArgs: [client.clientId])
-          .then((value) => dataController.loadClients());
+      Api.request(url: 'data.delete', method: 'post', body: {
+        "table": "clients",
+        "id": int.parse(client.clientId.toString()),
+        "state": "client_state"
+      }).then((res) {
+        if (res.containsKey('errors')) {
+          EasyLoading.showToast(res['errors'].toString());
+          return;
+        }
+        if (res.containsKey('status')) {
+          dataController.loadClients();
+        }
+      });
     });
   }
 }

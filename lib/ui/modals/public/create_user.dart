@@ -105,7 +105,7 @@ Future<void> showCreateUserModal(context) async {
                         userPass: txtUserPass.text,
                       );
 
-                      db.insert("users", usr.toMap()).then((value) {
+                      /* db.insert("users", usr.toMap()).then((value) {
                         EasyLoading.showSuccess(
                           "Nouveau utilisateur créé avec succès !",
                         );
@@ -113,7 +113,7 @@ Future<void> showCreateUserModal(context) async {
                         Future.delayed(Duration.zero, () {
                           Navigator.pop(context);
                         });
-                      });
+                      }); */
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primaryColor,

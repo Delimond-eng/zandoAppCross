@@ -37,4 +37,8 @@ final List<Menu> menus = [
     icon: "assets/icons/users.svg",
     title: "Utilisateurs",
   ),
+  Menu(
+    icon: "assets/icons/setting.svg",
+    title: "Configurations",
+  ),
 ];

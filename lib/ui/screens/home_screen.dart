@@ -2,14 +2,6 @@ import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
-import 'package:zandoprintapp/models/facture_detail.dart';
-import 'package:zandoprintapp/models/operation.dart';
-import 'package:zandoprintapp/services/db.service.dart';
-import '../../models/client.dart';
-import '../../models/compte.dart';
-import '../../models/facture.dart';
-import '../../models/user.dart';
-import '../../services/utils.dart';
 import '/global/controllers.dart';
 import '/global/storage.dart';
 import '/ui/widgets/user_avatar.dart';
@@ -48,7 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Future<bool> updateDatabase() async {
+  /* Future<bool> updateDatabase() async {
     /*Old database*/
     var olddb = await DBService.initDb(dbname: "old.db");
     /*New database*/
@@ -122,7 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
       print("operation : $latestId");
     }
     return true;
-  }
+  } */
 
   @override
   Widget build(BuildContext context) {
@@ -133,11 +125,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: FloatingActionButton(
                   backgroundColor: primaryColor,
                   onPressed: () async {
-                    authController.isSyncIn.value = true;
-                    updateDatabase()
-                        .then((value) => authController.isSyncIn.value = false);
+                    dataController.dataLoading.value = true;
+                    dataController.refreshDatas().then((value) {
+                      dataController.dataLoading.value = false;
+                    });
                   },
-                  child: authController.isSyncIn.value
+                  child: dataController.dataLoading.value
                       ? const SizedBox(
                           height: 25.0,
                           width: 25.0,
@@ -146,13 +139,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             strokeWidth: 3.0,
                           ),
                         )
-                      : SvgPicture.asset(
-                          "assets/icons/sync.svg",
-                          height: 24.0,
-                          colorFilter: const ColorFilter.mode(
-                            lightColor,
-                            BlendMode.srcIn,
-                          ),
+                      : const Icon(
+                          Icons.refresh_rounded,
+                          size: 22,
+                          color: Colors.white,
                         ),
                 ),
               ),
