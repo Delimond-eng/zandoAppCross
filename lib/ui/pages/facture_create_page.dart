@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import 'package:get/get.dart';
 import 'package:zandoprintapp/ui/widgets/submit_btn.dart';
 import '../../models/item.dart';
 import '../../services/api.dart';

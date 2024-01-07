@@ -16,6 +16,7 @@ import '../util.dart';
 Future<void> showSortieStockModal(context) async {
   List<Produit> produits = List.from(dataController.stocks);
   Produit? produit;
+  // ignore: unused_local_variable
   String? date;
   double soldeStock = 0;
   final txtQte = TextEditingController();

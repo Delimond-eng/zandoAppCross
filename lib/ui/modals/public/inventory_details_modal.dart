@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import '/services/db.service.dart';
 
 import '../../../config/utils.dart';
 import '../../../models/operation.dart';
-import '../../widgets/dashline.dart';
 import '../util.dart';
 
 Future<void> showInventoryDetails(context, opId) async {

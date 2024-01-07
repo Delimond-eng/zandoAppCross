@@ -238,7 +238,34 @@ class _HomeScreenState extends State<HomeScreen> {
                     "S'Authentifier",
                   ),
                 ),
-              )
+              ),
+              /* const SizedBox(
+                height: 10.0,
+              ),
+              ZoomIn(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const DemoSearchDropdown()));
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    padding: const EdgeInsets.all(18.0),
+                    elevation: 10.0,
+                    textStyle: const TextStyle(
+                      fontFamily: defaultFont,
+                      color: lightColor,
+                      fontSize: 14.0,
+                    ),
+                  ),
+                  icon: const Icon(Icons.arrow_circle_right_rounded),
+                  label: const Text(
+                    "S'Authentifier",
+                  ),
+                ),
+              ) */
             ],
           ),
         ),

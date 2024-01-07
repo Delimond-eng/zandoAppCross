@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:get/get.dart';
 import '../../services/api.dart';
-import '../../services/db.service.dart';
 import '/config/utils.dart';
 import '/global/controllers.dart';
 import '/ui/components/custom_appbar.dart';

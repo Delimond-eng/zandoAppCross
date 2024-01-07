@@ -3,13 +3,12 @@
 import 'package:animate_do/animate_do.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import 'package:get/get.dart';
 import 'package:zandoprintapp/ui/widgets/submit_btn.dart';
 import '../../../services/api.dart';
 import '/global/controllers.dart';
 import '/models/client.dart';
-import '/services/db.service.dart';
 import '/ui/widgets/custom_field.dart';
 import '/config/utils.dart';
 

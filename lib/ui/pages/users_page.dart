@@ -6,7 +6,6 @@ import 'package:flutter_svg/svg.dart';
 import 'package:get/get_state_manager/get_state_manager.dart';
 import '../../services/api.dart';
 import '/global/controllers.dart';
-import '/services/db.service.dart';
 import '/ui/modals/public/create_user.dart';
 import '/ui/widgets/empty_state.dart';
 import '/config/utils.dart';
@@ -49,7 +48,7 @@ class _UsersPageState extends State<UsersPage> {
                 itemCount: dataController.users.length,
                 itemBuilder: (context, index) {
                   var usr = dataController.users[index];
-                  return FadeInUp(
+                  return ZoomIn(
                     child: Card(
                       margin: EdgeInsets.zero,
                       child: Padding(

@@ -23,6 +23,7 @@ Future<void> showCreateStockModal(context) async {
   final txtQteProduit = TextEditingController();
   final txtPrixAchatProduit = TextEditingController();
   String devise = "USD";
+  // ignore: unused_local_variable
   String? date;
   bool isLoading = false;
   showCustomModal(

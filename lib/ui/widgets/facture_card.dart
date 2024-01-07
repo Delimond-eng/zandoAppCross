@@ -1,10 +1,7 @@
-// ignore_for_file: unnecessary_null_comparison
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:zandoprintapp/services/db.service.dart';
 import 'package:zandoprintapp/services/utils.dart';
 import 'package:zandoprintapp/ui/modals/public/facture_detail_modal.dart';
 import '../../services/api.dart';
@@ -346,7 +343,7 @@ class FactureCard extends StatelessWidget {
       Xloading.showLottieLoading(context);
       Api.request(url: 'data.delete', method: 'post', body: {
         'table': 'factures',
-        'id': int.parse(facture!.factureId.toString()),
+        'id': int.parse(facture.factureId.toString()),
         'state': 'facture_state'
       }).then((value) async {
         Xloading.dismiss();
