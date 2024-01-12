@@ -17,6 +17,7 @@ class Operation {
   Facture? facture;
   User? user;
   Compte? compte;
+  List<Paiement>? paiements;
 
   Operation(
       {this.id,

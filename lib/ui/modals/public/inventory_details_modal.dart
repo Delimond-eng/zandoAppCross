@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../../config/utils.dart';
 import '../../../models/operation.dart';
+import '../../widgets/ticket_card.dart';
 import '../util.dart';
 
-Future<void> showInventoryDetails(context, opId) async {
-  /* var details = await getInventoryDetails(opId); */
-  var details = null;
+Future<void> showInventoryDetails(context, {List<Operation>? details}) async {
   showCustomModal(
     context,
-    width: MediaQuery.of(context).size.width / 1.50,
+    width: MediaQuery.of(context).size.width,
     child: StatefulBuilder(builder: (context, setter) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -35,7 +34,7 @@ Future<void> showInventoryDetails(context, opId) async {
                 ),
                 ListView.builder(
                   shrinkWrap: true,
-                  itemCount: details.length,
+                  itemCount: details!.length,
                   itemBuilder: (context, index) {
                     var detail = details[index];
                     return InventoryDetailsCard(
@@ -58,126 +57,186 @@ class InventoryDetailsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        /* Container(
-          height: 55.0,
-          width: MediaQuery.of(context).size.width,
-          decoration: BoxDecoration(
-            color: lightColor,
-            borderRadius: BorderRadius.circular(5),
-            border: Border.all(
-              color: Colors.grey.shade200,
-              width: 2,
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(5.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 5.0),
+      child: TicketCard(
+        height: 60,
+        width: MediaQuery.of(context).size.width,
+        color: lightColor,
+        isCornerRounded: true,
+        borderColor: Colors.grey.shade400,
+        padding: const EdgeInsets.symmetric(horizontal: 12.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.calendar_month_outlined,
-                          color: Colors.grey,
-                          size: 15.0,
-                        ),
-                        Text(
-                          detail.operationDate!.split('-').first,
-                          style: const TextStyle(
-                            fontSize: 12.0,
-                            fontFamily: defaultFont,
-                            fontWeight: FontWeight.w800,
-                            color: defaultTextColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Text(
-                      "${detail.operationDate!.split('-')[1]}/${detail.operationDate!.split('-').last}",
-                      style: const TextStyle(
-                        fontSize: 10.0,
-                        fontFamily: defaultFont,
-                        fontWeight: FontWeight.w500,
-                        color: defaultTextColor,
-                      ),
-                    ),
-                  ],
+                const Icon(
+                  Icons.calendar_month_outlined,
+                  size: 14.0,
+                  color: Colors.indigo,
                 ),
-                Flexible(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        "N°Facture",
-                        style: TextStyle(
-                          fontSize: 11.0,
-                          fontFamily: defaultFont,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.grey.shade800,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(
-                        height: 2.0,
-                      ),
-                      Text(
-                        detail.facture!.factureId.toString().padLeft(3, "0"),
-                        style: const TextStyle(
-                          fontSize: 12.0,
-                          fontFamily: defaultFont,
-                          fontWeight: FontWeight.w700,
-                          color: defaultTextColor,
-                        ),
-                      ),
-                    ],
-                  ),
+                const SizedBox(
+                  width: 5.0,
                 ),
-                Flexible(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        "Montant",
-                        style: TextStyle(
-                          fontSize: 11.0,
-                          fontFamily: defaultFont,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.grey.shade800,
-                        ),
-                      ),
-                      const SizedBox(
-                        height: 2.0,
-                      ),
-                      Text(
-                        "${detail.operationMontant} ${detail.operationDevise}",
-                        style: const TextStyle(
-                          fontSize: 12.0,
-                          fontFamily: defaultFont,
-                          fontWeight: FontWeight.w700,
-                          color: defaultTextColor,
-                        ),
-                      ),
-                    ],
+                Text(
+                  detail.operationCreateAt!,
+                  style: const TextStyle(
+                    fontFamily: defaultFont,
+                    fontSize: 12.0,
+                    color: Colors.black,
                   ),
                 ),
               ],
             ),
-          ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "N° facture",
+                  style: TextStyle(
+                    fontFamily: defaultFont,
+                    fontSize: 10.0,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                RichText(
+                  text: TextSpan(
+                    text: detail.facture!.factureId.toString().padLeft(3, '0'),
+                    style: const TextStyle(
+                      fontFamily: defaultFont,
+                      fontSize: 15.0,
+                      fontWeight: FontWeight.w900,
+                      color: primaryColor,
+                    ),
+                  ),
+                )
+              ],
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Facture montant",
+                  style: TextStyle(
+                    fontFamily: defaultFont,
+                    fontSize: 10.0,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                RichText(
+                  text: TextSpan(
+                    text: detail.facture!.factureMontant.toString(),
+                    style: const TextStyle(
+                      fontFamily: defaultFont,
+                      fontSize: 15.0,
+                      fontWeight: FontWeight.w900,
+                      color: primaryColor,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: " ${detail.facture!.factureDevise}",
+                        style: const TextStyle(
+                          fontSize: 8.0,
+                          fontFamily: defaultFont,
+                          fontWeight: FontWeight.w500,
+                          color: defaultTextColor,
+                        ),
+                      )
+                    ],
+                  ),
+                )
+              ],
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Paiement",
+                  style: TextStyle(
+                    fontFamily: defaultFont,
+                    fontSize: 10.0,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                RichText(
+                  text: TextSpan(
+                    text: detail.facture!.totPay.toString(),
+                    style: const TextStyle(
+                      fontFamily: defaultFont,
+                      fontSize: 15.0,
+                      fontWeight: FontWeight.w900,
+                      color: primaryColor,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: " ${detail.facture!.factureDevise}",
+                        style: const TextStyle(
+                          fontSize: 8.0,
+                          fontFamily: defaultFont,
+                          fontWeight: FontWeight.w500,
+                          color: defaultTextColor,
+                        ),
+                      )
+                    ],
+                  ),
+                )
+              ],
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Compte",
+                  style: TextStyle(
+                    fontFamily: defaultFont,
+                    fontSize: 10.0,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                Text(
+                  detail.compte!.compteLibelle!,
+                  style: const TextStyle(
+                    fontFamily: defaultFont,
+                    fontSize: 12.0,
+                    fontWeight: FontWeight.w700,
+                    color: primaryColor,
+                  ),
+                )
+              ],
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Caissier",
+                  style: TextStyle(
+                    fontFamily: defaultFont,
+                    fontSize: 10.0,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                Text(
+                  detail.facture!.user!.userName!,
+                  style: const TextStyle(
+                    fontFamily: defaultFont,
+                    fontSize: 12.0,
+                    fontWeight: FontWeight.w700,
+                    color: primaryColor,
+                  ),
+                )
+              ],
+            ),
+          ],
         ),
-        DashedLine(
-          space: 5.0,
-          color: Colors.grey.shade400,
-          height: .5,
-        ) */
-      ],
+      ),
     );
   }
 }

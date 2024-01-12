@@ -4,6 +4,7 @@ import '../models/client.dart';
 import '../models/compte.dart';
 import '../models/currency.dart';
 import '../models/facture.dart';
+import '../models/inventory.dart';
 import '../models/operation.dart';
 import '../models/stock.dart';
 import '../models/user.dart';
@@ -28,7 +29,7 @@ class DataController extends GetxController {
   var dailySums = <DailyCount>[].obs;
   var paiements = <Paiement>[].obs;
   var paiementDetails = <Operation>[].obs;
-  var inventories = <Operation>[].obs;
+  var inventories = <Inventory>[].obs;
   var daySellCount = 0.0.obs;
   var dataLoading = false.obs;
   var stocks = <Produit>[].obs;
@@ -199,8 +200,42 @@ class DataController extends GetxController {
     return true;
   }
 
-  Future loadInventories(String fword, {fkey}) async {
+  Future<bool> loadInventories({fkey, keyVal}) async {
+    dataLoading.value = true;
+    if (keyVal == null) {
+      var res = await Api.request(url: 'inventories.load/$fkey');
+      dataLoading.value = false;
+      if (res.containsKey('status')) {
+        var datas = res['results'];
+        inventories.clear();
+        for (var e in datas) {
+          inventories.add(Inventory.fromJson(e));
+        }
+      }
+    } else {
+      var res = await Api.request(url: 'inventories.load/$fkey/$keyVal');
+      dataLoading.value = false;
+      if (res.containsKey('status')) {
+        var datas = res['results'];
+        inventories.clear();
+        for (var e in datas) {
+          inventories.add(Inventory.fromJson(e));
+        }
+      }
+    }
     return true;
+  }
+
+  Future<List<Operation>> showInventoryDetails(date) async {
+    List<Operation> details = [];
+    var res = await Api.request(url: 'inventory.details/$date');
+    if (res.containsKey('status')) {
+      var datas = res['results'];
+      for (var e in datas) {
+        details.add(Operation.fromJson(e));
+      }
+    }
+    return details;
   }
 
   Future loadStockData() async {

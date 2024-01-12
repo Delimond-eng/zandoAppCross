@@ -78,7 +78,7 @@ class MenuItem extends StatelessWidget {
                 );
                 break;
               case "Inventaires":
-                dataController.loadInventories("all");
+                dataController.loadInventories(fkey: "all");
                 Navigator.push(
                   context,
                   MaterialPageRoute(

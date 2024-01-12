@@ -31,8 +31,22 @@ Future<void> showCompteFilterModal(context,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 SearchInput(
-                  hinteText: "Rechercher client...",
-                  onSearched: (val) async {},
+                  hinteText: "Rechercher compte...",
+                  onSearched: (value) async {
+                    if (value!.isEmpty) {
+                      setter(() {
+                        comptes = List.from(dataController.comptes);
+                      });
+                    } else {
+                      setter(() {
+                        comptes = dataController.comptes
+                            .where((item) => item.compteLibelle!
+                                .toLowerCase()
+                                .contains(value.toLowerCase()))
+                            .toList();
+                      });
+                    }
+                  },
                 ),
                 if (comptes.isEmpty) ...[
                   const EmptyState()

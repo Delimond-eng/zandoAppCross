@@ -1,9 +1,11 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
+import 'package:zandoprintapp/ui/modals/public/compte_filter_modal.dart';
 import '../widgets/inventory_card.dart';
-import '/ui/modals/public/compte_filter_modal.dart';
 import '/ui/widgets/custom_field.dart';
 import '../../config/utils.dart';
 import '../../global/controllers.dart';
@@ -27,11 +29,16 @@ class _InventoryPageState extends State<InventoryPage> {
   Compte? compte;
   String? date;
   Month? mois;
+  int? annee;
+
+  double totaux = 0;
 
   List<Month> months = <Month>[];
+  List<int> years = [];
 
   initData() async {
     var m = await Report.getMonths();
+    years = getListOfYears();
     /*  */
     setState(() {
       months.clear();
@@ -39,33 +46,29 @@ class _InventoryPageState extends State<InventoryPage> {
     });
   }
 
-  double _entrees = 0;
-  double _sorties = 0;
-
-  double get _solde => _entrees - _sorties;
-
-  /* initTot({String? key}) async {
-    double en = 0;
-    double so = 0;
-    if (key == "all") {
-      await dataController.loadInventories(key!);
-    }
+  initTot() async {
+    totaux = 0;
     for (var e in dataController.inventories) {
-      if (e.operationType!.toLowerCase() == 'entrée') {
-        en += e.totalPayment!;
-      }
-      if (e.operationType!.toLowerCase() == 'sortie') {
-        so += e.totalPayment!;
-      }
+      totaux += e.totalAmount!;
     }
-    _entrees = en;
-    _sorties = so;
+    setState(() {});
   }
- */
+
   @override
   void initState() {
     super.initState();
     initData();
+    SchedulerBinding.instance.addPostFrameCallback((_) async {
+      dataController.dataLoading.value = true;
+      dataController.loadInventories(fkey: 'all').then((res) {
+        dataController.dataLoading.value = false;
+      });
+    });
+    dataController.inventories.listen((data) {
+      if (mounted) {
+        initTot();
+      }
+    });
   }
 
   @override
@@ -123,11 +126,24 @@ class _InventoryPageState extends State<InventoryPage> {
                           child: InkWell(
                             onTap: () async {
                               var idate = await showDatePicked(context);
+                              if (idate != null) {
+                                dataController
+                                    .loadInventories(
+                                        fkey: 'date', keyVal: idate)
+                                    .then((v) {
+                                  setState(() {
+                                    compte = null;
+                                    int? a;
+                                    Month? m;
+
+                                    annee = a;
+                                    mois = m;
+                                  });
+                                });
+                              }
                               setState(() {
                                 date = idate;
                               });
-                              /* await dataController.loadInventories("date",
-                                  fkey: date); */
                             },
                             borderRadius: BorderRadius.circular(5.0),
                             child: Padding(
@@ -163,12 +179,16 @@ class _InventoryPageState extends State<InventoryPage> {
                                         ),
                                         if (date != null) ...[
                                           CustomBtnIcon(onPressed: () async {
+                                            dataController.loadInventories(
+                                                fkey: 'all');
                                             setState(() {
                                               date = null;
+                                              int? a;
+                                              Month? m;
+
+                                              annee = a;
+                                              mois = m;
                                             });
-                                            /* await dataController
-                                                .loadInventories("all"); */
-                                            /* initTot(key: "all"); */
                                           }),
                                         ]
                                       ],
@@ -182,7 +202,7 @@ class _InventoryPageState extends State<InventoryPage> {
                       ),
                     ),
                     const SizedBox(
-                      width: 15.0,
+                      width: 10.0,
                     ),
                     Flexible(
                       child: Container(
@@ -200,14 +220,24 @@ class _InventoryPageState extends State<InventoryPage> {
                           color: Colors.transparent,
                           child: InkWell(
                             onTap: () {
-                              showCompteFilterModal(context,
-                                  onSelected: (Compte val) async {
+                              showCompteFilterModal(context, onSelected: (co) {
                                 setState(() {
-                                  compte = val;
+                                  compte = co;
                                 });
-                                /* await dataController.loadInventories("compte",
-                                    fkey: val.compteId); */
-                                setState(() {});
+                                dataController
+                                    .loadInventories(
+                                        fkey: 'compte',
+                                        keyVal: compte!.compteId)
+                                    .then((value) {
+                                  setState(() {
+                                    date = null;
+                                    int? a;
+                                    Month? m;
+
+                                    annee = a;
+                                    mois = m;
+                                  });
+                                });
                               });
                             },
                             borderRadius: BorderRadius.circular(5.0),
@@ -253,11 +283,16 @@ class _InventoryPageState extends State<InventoryPage> {
                                         if (compte != null) ...[
                                           CustomBtnIcon(
                                             onPressed: () async {
+                                              dataController.loadInventories(
+                                                  fkey: 'all');
                                               setState(() {
                                                 compte = null;
+                                                int? a;
+                                                Month? m;
+
+                                                annee = a;
+                                                mois = m;
                                               });
-                                              /* await dataController
-                                                  .loadInventories("all"); */
                                             },
                                           ),
                                         ] else ...[
@@ -277,7 +312,8 @@ class _InventoryPageState extends State<InventoryPage> {
                       ),
                     ),
                     const SizedBox(
-                      width: 15.0,
+                      width: 40.0,
+                      child: Center(child: Text('OU')),
                     ),
                     SizedBox(
                       width: 150.0,
@@ -285,18 +321,99 @@ class _InventoryPageState extends State<InventoryPage> {
                           dropItems: months,
                           isDropdown: true,
                           hintText: "Mois",
+                          selectedValue: mois,
                           iconPath: "assets/icons/calendar-check.svg",
                           borderColor: primaryColor.withOpacity(.5),
                           onChangedDrop: (val) {
                             setState(() {
                               mois = val;
                             });
+                          }),
+                    ),
+                    const SizedBox(
+                      width: 20.0,
+                      child: Icon(
+                        CupertinoIcons.minus,
+                        size: 16.0,
+                      ),
+                    ),
+                    SizedBox(
+                      width: 150.0,
+                      child: CustomField(
+                          dropItems: years,
+                          isDropdown: true,
+                          hintText: "Année",
+                          iconPath: "assets/icons/calendar-check.svg",
+                          borderColor: primaryColor.withOpacity(.5),
+                          selectedValue: annee,
+                          onChangedDrop: (val) {
+                            setState(() {
+                              annee = int.parse(val.toString());
+                            });
                             /* dataController.loadInventories(
                               "mois",
                               fkey: mois!.value,
                             ); */
                           }),
-                    )
+                    ),
+                    const SizedBox(
+                      width: 10.0,
+                    ),
+                    Container(
+                      height: 50.0,
+                      width: 50.0,
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade400,
+                        border: Border.all(color: Colors.blue.shade500),
+                        borderRadius: BorderRadius.circular(4.0),
+                      ),
+                      child: Material(
+                        borderRadius: BorderRadius.circular(4.0),
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(4.0),
+                          onTap: () {
+                            if (mois == null) {
+                              EasyLoading.showToast(
+                                  'Veuillez sélectionner un mois !');
+                              return;
+                            }
+
+                            if (annee == null) {
+                              EasyLoading.showToast(
+                                  'Veuillez sélectionner une année !');
+                              return;
+                            }
+                            String key = '${mois!.value}-$annee';
+                            dataController
+                                .loadInventories(fkey: 'mois', keyVal: key)
+                                .then((value) {
+                              setState(() {
+                                compte = null;
+                                mois = null;
+                              });
+                            });
+                          },
+                          child: Obx(
+                            () => Center(
+                              child: dataController.dataLoading.value
+                                  ? const SizedBox(
+                                      height: 18.0,
+                                      width: 18.0,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(
+                                      CupertinoIcons.search,
+                                      color: Colors.white,
+                                      size: 18.0,
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -306,17 +423,8 @@ class _InventoryPageState extends State<InventoryPage> {
             () => Expanded(
               child: dataController.inventories.isEmpty
                   ? const EmptyState()
-                  : GridView.builder(
-                      shrinkWrap: true,
-                      padding: const EdgeInsets.all(10),
-                      physics: const BouncingScrollPhysics(),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount:
-                            (MediaQuery.of(context).size.width ~/ 300).toInt(),
-                        childAspectRatio: 2.2,
-                        crossAxisSpacing: 15.0,
-                        mainAxisSpacing: 15.0,
-                      ),
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(10.0),
                       itemCount: dataController.inventories.length,
                       itemBuilder: (context, index) {
                         var item = dataController.inventories[index];
@@ -391,32 +499,12 @@ class _InventoryPageState extends State<InventoryPage> {
               children: [
                 Flexible(
                   child: SyntheseInfo(
-                    amount: _entrees,
+                    amount: totaux,
                     currency: "USD",
-                    title: "Total des entrées",
-                    icon: CupertinoIcons.up_arrow,
-                    thikness: .1,
-                    titleColor: Colors.green[700]!,
-                  ),
-                ),
-                Flexible(
-                  child: SyntheseInfo(
-                    amount: _sorties,
-                    currency: "USD",
-                    title: "Total des sorties",
-                    titleColor: Colors.red,
-                    icon: CupertinoIcons.down_arrow,
-                    thikness: .1,
-                  ),
-                ),
-                Flexible(
-                  child: SyntheseInfo(
-                    amount: _solde,
-                    currency: "USD",
-                    title: "Solde",
-                    titleColor: Colors.indigo,
+                    title: "Total Général",
                     icon: CupertinoIcons.money_dollar_circle_fill,
                     thikness: .1,
+                    titleColor: Colors.green[700]!,
                   ),
                 ),
               ],
@@ -425,5 +513,14 @@ class _InventoryPageState extends State<InventoryPage> {
         ],
       ),
     );
+  }
+
+  List<int> getListOfYears() {
+    var now = DateTime.now();
+    List<int> years = [];
+    for (int year = 2022; year <= now.year + 1; year++) {
+      years.add(year);
+    }
+    return years;
   }
 }
